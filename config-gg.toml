@@ -1,17 +1,22 @@
-# This file governs the generation of a Gopher hole and/or a Gemini capsule
-# from a Hugo site.  It should not be merged with your original Hugo’s 
-# config.toml  -- that is the reason for a different name for this file.
+###############################################################################
+# This file governs the generation of a Gopher hole and/or a Gemini capsule   #
+# from a Hugo site.  It should not be merged with your original Hugo’s        #
+# config.toml  -- that is the reason for a different name for this file.      #
+###############################################################################
 
 # Title of the main page of the Gopher hole and/or Gemini capsule
 title = "My New Gopher/Gemini Site"
 
-theme = "Gopher-Gemini"
+theme        = "Hugo-2-Gopher-and-Gemini"
 languageCode = "en-us"
 defaultcontentlanguage = "en-us"
 
+# Ignore content written in html files
+ignoreFiles =  [".html$"] 
+
 [params]
     # Author and copyright can be placed at the bottom of selected pages
-    author = "My Name"
+    author    = "My Name"
     copyright = "copyright 2021"
 
     # Information about the site. Placed after the description (below).
@@ -26,19 +31,19 @@ defaultcontentlanguage = "en-us"
     description = "gopher description for this site (gopher hole)"
 
     # Text for the different sections (menu, posts, sociual media)
-    menuText = "Site sections:"
-    postText = "Posts:"
+    menuText   = "Site sections:"
+    postText   = "Posts:"
     socialText = "Social media links:"
 
     # Which sections should be included on which pages
     # "main" indicates main page
     # "list" indicate lists pages (like taxonomy and posts)
     # "pages" indicate regular post pages
-    includeMenu = ["main", "lists", "pages" ]
+    includeMenu       = ["main", "lists", "pages" ]
     includeCategories = ["main", "lists", "pages" ]
-    includeSocial = ["main", "lists", "pages" ]
+    includeSocial     = ["main", "lists", "pages" ]
     includeReturnHome = ["main", "lists", "pages" ]
-    includeAuthor = ["main", "lists", "pages" ]
+    includeAuthor     = ["main", "lists", "pages" ]
 
     # Most Gopher servers are OK with partial lines (less than 4 <tabs>)
     # For others you may need to set fullLine to true and provide a valid
@@ -62,98 +67,97 @@ defaultcontentlanguage = "en-us"
     description = "gemini description for this site (gemini capsule)"
 
     # Text for the different sections (menu, posts, sociual media)
-    menuText = "## Site sections"
-    postText = "## Posts"
+    menuText   = "## Site sections"
+    postText   = "## Posts"
     socialText = "## Social media links"
 
     # Which sections should be included on which pages
     # "main" indicates main page
     # "list" indicate lists pages (like taxonomy and posts)
     # "pages" indicate regular post pages
-    includeMenu = ["main", "lists", "pages" ]
+    includeMenu       = ["main", "lists", "pages" ]
     includeCategories = ["main", "lists", "pages" ]
-    includeSocial = ["main", "lists", "pages" ]
+    includeSocial     = ["main", "lists", "pages" ]
     includeReturnHome = ["main", "lists", "pages" ]
-    includeAuthor = ["main", "lists", "pages" ]
+    includeAuthor     = ["main", "lists", "pages" ]
 
 # Menu links will be placed in the pages indicated in includeMenu 
 [[menu.main]]
-    name = "Home"
+    name   = "Home"
     weight = 1
-    url = "/"
+    url    = "/"
 [[menu.main]]
-    name = "Posts"
+    name   = "Posts"
     weight = 2
-    url  = "/posts/"
+    url    = "/posts/"
 [[menu.main]]
-    name = "About"
+    name   = "About"
     weight = 3
-    url = "/about/"
+    url    = "/about/"
 
 # Social links will be placed in the pages indicated in includeSocial
 [[params.social]]
-    name = "Github"
+    name   = "Github"
     weight = 1
-    url = "https://github.com/my-account/"
+    url    = "https://github.com/my-account/"
 [[params.social]]
-    name = "Mail"
+    name   = "Mail"
     weight = 2
-    url = "mailto:my-name@example.org"
+    url    = "mailto:my-name@example.org"
 
 #######################################################
 # You may not need to touch the following configuration
 
-config = "config-gg.toml"
-metaDataFormat = "toml"
+config          = "config-gg.toml"
+metaDataFormat  = "toml"
 
 # Disable files not needed for Gopher and Gemini
-disableRSS =     true
-disableSitemap = true
-disable404 =     true
-enableEmoji =    false
+disableRSS      = true
+disableSitemap  = true
+disable404      = true
+enableEmoji     = false
 
 # Directories used for Gopher and Gemini generation
-layoutDir =  "layouts-gg"
-publishDir = "public-gg"
+layoutDir       = "layouts-gg"
+publishDir      = "public-gg"
 
-uglyURLs     = true
-relativeURLs = false
-canonifyURLs = true
+uglyURLs        = true
+relativeURLs    = false
+canonifyURLs    = true
 
 [mediaTypes]
 [mediaTypes."text/gemini"]
-  suffixes = ["gmi"]
+  suffixes      = ["gmi"]
 [mediaTypes."text/plain"]
-  suffixes = ["txt"]
+  suffixes      = ["txt"]
 
 [outputs]
-  home = ["gemini", "gopher"]
-  section = ["gemini", "gopher"]
-  taxonomy = ["gemini", "gopher"]
-  term = ["gemini", "gopher"]
-  page = ["gemini", "gopher"]
+  home          = ["gemini", "gopher"]
+  section       = ["gemini", "gopher"]
+  taxonomy      = ["gemini", "gopher"]
+  term          = ["gemini", "gopher"]
+  page          = ["gemini", "gopher"]
 
 [outputFormats]
 [outputFormats.gopher]
-  name = "gopher"
-  mediaType = "text/plain"
-  baseName = "gophermap"
-  isPlainText = true
+  name          = "gopher"
+  mediaType     = "text/plain"
+  baseName      = "gophermap"
+  isPlainText   = true
   permalinkable = true
-  isHTML = false
-  protocol = "gopher://"
-  noUgly = false
-  path = "gopher/"
+  isHTML        = false
+  protocol      = "gopher://"
+  noUgly        = false
+  path          = "gopher/"
   
 [outputFormats.Gemini]
-  name = "gemini"
-  mediaType = "text/gemini"
-  baseName = "gemini-page"
-  isPlainText = true
+  name          = "gemini"
+  mediaType     = "text/gemini"
+  baseName      = "gemini-page"
+  isPlainText   = true
   permalinkable = true
-  isHTML = false
-  protocol = "gemini://"
-  noUgly = false
-  path = "gemini/"
-
+  isHTML        = false
+  protocol      = "gemini://"
+  noUgly        = false
+  path          = "gemini/"
 

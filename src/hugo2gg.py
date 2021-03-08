@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3 -u
 
 """ Convert a static web site to and enbedded system
 
@@ -103,24 +103,17 @@ def clone_file(src, dst):
     """
 
     vbprint("CLONE:",src,"->",dst)
-    dstFolder = os.path.dirname(dst)
-    if not os.path.exists(dstFolder):
-        os.makedirs(dstFolder)
-
     try:
-        flSrc = open(src, 'rb')
-        flDst = open(dst, 'wb')
-        while True:
-            block = flSrc.read(4096) # Just 4k blocks
-            if not block:
-                break
-            flDst.write(block)
+        dstFolder = os.path.dirname(dst)
+        if not os.path.exists(dstFolder):
+            os.makedirs(dstFolder)
+
+        with open(src, 'rb') as flSrc:
+            with open(dst, 'wb') as flDst:
+                flDst.write(flSrc.read())
 
     except OSError as e:
         error(e, " while processing files", src,"=>",dst)
-
-    flSrc.close()
-    flDst.close()
 
 
 def justify (txt):
@@ -290,6 +283,8 @@ def convert_gopher(src, dst, arPath, arLast):
         item = hint
         if uri[0] == '/':
             mime = mimetypes.MimeTypes().guess_type(uri)[0]
+            if not mime:
+                return '1'
             mm = mime.split('/')
             if not mime:
                 item = '1' # Directory
@@ -635,6 +630,42 @@ def traverse_site(arPath, arGopher, typeGopher, arGemini, typeGemini):
     print("Number of cloned files", count)
 
 
+def fix_hugo_nested_paths(arPath, arGemini, arGopher):
+    #
+    # Sometimes hugo generates nested paths
+    # It happens in "test-hugo-theme-console", 
+    #    where "public-gg/gemini/gemini" and "public-gg/gopher/gemini" are generated
+    # So, this is a kludge to fix that hugo behaviour
+    geminiPath = arGemini.replace(arPath + os.sep, "", 1)
+    gopherPath = arGopher.replace(arPath + os.sep, "", 1)
+    badPath = [os.path.join(arPath, geminiPath, geminiPath), 
+               os.path.join(arPath, geminiPath, gopherPath), 
+               os.path.join(arPath, gopherPath, geminiPath), 
+               os.path.join(arPath, gopherPath, gopherPath)] 
+    for path in badPath:
+        if not os.path.isdir(path):
+            continue
+        vbprint("Fixing hugo generated nested path", path)
+        if path.endswith(os.sep + geminiPath):
+            goodPath = path[:-len(os.sep + geminiPath)]
+        elif path.endswith(os.sep + gopherPath):
+            goodPath = path[:-len(os.sep + gopherPath)]
+        isGemini = path.startswith(arGemini)
+        for rootDir, subdirs, filenames in os.walk(path):
+            try:
+                for filename in filenames:
+                    sourceName = os.path.join(rootDir, filename)
+                    if isGemini:
+                        targetName = os.path.join(os.path.dirname(rootDir), filename).replace(path, goodPath, 1)
+                    else:
+                        targetName = sourceName.replace(path, goodPath, 1)
+                    clone_file(sourceName, targetName)
+                    delete_file(sourceName)
+
+            except OSError as e:
+                error(e," while processing file", filename)
+
+
 def execHugo(arNoHugo, arPath, arConfig, arEmpty):
     hugo = ['hugo', '--config', arConfig, '--destination', arPath, '--layoutDir', arEmpty, '--disableKinds', 'sitemap']
     cmd = ' '.join(hugo)
@@ -655,7 +686,7 @@ def arguments() :
     print("   -g, --gopher  <path>  Gopher output folder (default to public-gg/gopher)")
     print("   -G, --gemini  <path>  Gemini output folder (default to public-gg/gemini)")
     print("   -e, --empty   <path>  Path of empty folder (default to layouts-gg)")
-    print("   -l, --last    <path>  Path for last build folder (default to public-gg-old)")
+    print("   -l, --last    <path>  Path for last build folder (default to public-gg-sav)")
     print("   -c, --config  <file>  Name of the hugo config file (default to config-gg.toml)")
     print("   -t, --type    <type>  type of output to be generated (default to all)")
     print("                         <type> can be:")
@@ -677,7 +708,7 @@ def main(argv):
    arPath   = "public-gg"
    arGopher = "public-gg" + os.sep + "gopher"
    arGemini = "public-gg" + os.sep + "gemini"
-   arLast   = "public-gg-old"
+   arLast   = "public-gg-sav"
    arEmpty  = "layouts-gg"
    typeGopher = False
    typeGemini = False
@@ -724,14 +755,14 @@ def main(argv):
       error("Invalid type ", arType)
       arguments()
 
-   print("Proceeding as follows:\n    Input folder:",arPath)
+   print("Proceeding as follows:\n    Input folder: ",arPath)
    if arType in ("all", "gopher"):
        print("    Gopher folder:",arGopher)
        typeGopher = True
    if arType in ("all", "gemini"):
        print("    Gemini folder:",arGemini)
        typeGemini = True
-   print("")
+   print("    Config file:  ", arConfig, "\n    Last output:  ", arLast,"\n")
 
    execHugo(arNoHugo, arPath, arConfig, arEmpty)
    traverse_site(arPath, arGopher, typeGopher, arGemini, typeGemini)
@@ -739,6 +770,15 @@ def main(argv):
        traverse_gopher(arGopher, arPath, arLast)
    if typeGemini:
        traverse_gemini(arGemini, arPath, arLast)
+
+   #### For some unknown reason to me, sometimes hugo generates nested folders as follows:
+   ####     public-gg/gemini/gemini/...
+   ####     public-gg/gopher/gemini/...
+   ####     public-gg/gopher/gopher/...
+   ####     public-gg/gemini/gopher/...
+   #### Don't understand why hugo do that, but it needs to be fixed, so
+   fix_hugo_nested_paths(arPath, arGemini, arGopher)
+
    print("done")
 
 if __name__ == "__main__":

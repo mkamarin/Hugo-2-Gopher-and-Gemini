@@ -32,10 +32,10 @@ git submodule update --remote --merge
 
 ## Usage
 1. You need to copy the `config-gg.toml` file to the main folder of your hugo site and edit it to adjust it to your situation. Note that now you have two distinct config files, namely one for your main theme (`config.toml`) and one for this theme (`config-gg.toml`).
-2. If you plan to have content that is specific to Gopher or Gemini, you may want to use a naming convention for those posts. For example, you may name your Gopher posts `<name>-gopher.md` and write them in a way that will look nice in Gopher. The same is true for Gemini. In that case, you want to add the following line to your main `config.toml` file:
+2. If you plan to have content that is specific to Gopher and/or Gemini, you may want to use a naming convention for those posts. For example, you may name those posts `<name>-gg.md` and write them in a way that will look nice in Gopher and/or Gemini. In that case, you want to add the following line to your main `config.toml` file:
 
 ```toml
-ignoreFiles =  ["-gemini.md$", "-gopher.md$"]
+ignoreFiles =  ["-gg.md$"]
 ```
 
 3. You need to create an empty folder called `layouts-gg`. This is done to avoid hugo from using the content in your main `layouts` folder.
