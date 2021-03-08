@@ -1,0 +1,11 @@
+[[[=> copyPage: {{- .Params.copypage -}},keepRaw: {{- .Params.keepraw -}},removeExtras: {{- .Params.removeExtras -}} <=]]]
+# {{ .Title }}
+
+{{ .Site.Params.gemini.description }}
+
+{{ .Site.Params.info }}
+
+{{ .RawContent }}
+{{ .Scratch.Set "type" "main" }}
+{{ partial "extras.gemini.gmi" . }}
+

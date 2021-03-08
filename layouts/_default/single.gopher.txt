@@ -1,0 +1,23 @@
+[[[=> copyPage: {{- .Params.copypage -}},keepRaw: {{- .Params.keepraw -}},removeExtras: {{- .Params.removeExtras -}},fullLine: {{- .Site.Params.gopher.fullLine -}},textChar: {{- .Site.Params.gopher.textChar -}},host:{{- .Site.Params.gopher.host -}},port:{{- .Site.Params.gopher.port -}}  <=]]]
+{{ if .Params.keepraw }}
+{{ .RawContent -}}
+{{ else }}
+i{{ .Title }}
+i
+i{{ .Date.Format (.Site.Params.dateform | default "January 2006") }} · {{ .ReadingTime }} minute read
+{{ if .Params.tags }}
+iPosted in:  {{ range .Params.tags }}{{ . }}, {{ end }}
+{{ end }}
+i
+{{ $content := .RawContent -}}
+{{ $content := $content | replaceRE "\t" "  " -}}
+{{- range (split $content "\n") }}
+i{{- . }}
+{{- end }}
+{{- end }}
+{{ if .Params.removeextras }}
+{{ else }}
+{{ .Scratch.Set "type" "pages" }}
+{{ partial "extras.gopher.txt" . }}
+.
+{{- end -}}

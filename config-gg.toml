@@ -1,0 +1,159 @@
+# This file governs the generation of a Gopher hole and/or a Gemini capsule
+# from a Hugo site.  It should not be merged with your original Hugo’s 
+# config.toml  -- that is the reason for a different name for this file.
+
+# Title of the main page of the Gopher hole and/or Gemini capsule
+title = "My New Gopher/Gemini Site"
+
+theme = "Gopher-Gemini"
+languageCode = "en-us"
+defaultcontentlanguage = "en-us"
+
+[params]
+    # Author and copyright can be placed at the bottom of selected pages
+    author = "My Name"
+    copyright = "copyright 2021"
+
+    # Information about the site. Placed after the description (below).
+    info = "Information about me"
+
+    # Text of optional link to main page (see includeReturnHome below)
+    returnHome = "Return to main page"
+
+# Gopher hole specific configuration
+[params.gopher]
+    # description is placed after the title but before the info
+    description = "gopher description for this site (gopher hole)"
+
+    # Text for the different sections (menu, posts, sociual media)
+    menuText = "Site sections:"
+    postText = "Posts:"
+    socialText = "Social media links:"
+
+    # Which sections should be included on which pages
+    # "main" indicates main page
+    # "list" indicate lists pages (like taxonomy and posts)
+    # "pages" indicate regular post pages
+    includeMenu = ["main", "lists", "pages" ]
+    includeCategories = ["main", "lists", "pages" ]
+    includeSocial = ["main", "lists", "pages" ]
+    includeReturnHome = ["main", "lists", "pages" ]
+    includeAuthor = ["main", "lists", "pages" ]
+
+    # Most Gopher servers are OK with partial lines (less than 4 <tabs>)
+    # For others you may need to set fullLine to true and provide a valid
+    # host and port values
+    fullLine = false
+
+    # For Gopher servers that require full lines, the host and port are
+    # important. However, note that fullLine makes the Gopher hole very
+    # specific to a hosting environment
+    host = "null.host"
+    port = 70
+
+    # Most Gopher servers are OK with text lines not starting with 'i',
+    # those servers will append the 'i' to every line that does not contains
+    # a tab. So, in most cases leaving this as false will work fine
+    textChar = false
+
+# Gemini capsule specific configuration
+[params.gemini]
+    # description is placed after the title but before the info
+    description = "gemini description for this site (gemini capsule)"
+
+    # Text for the different sections (menu, posts, sociual media)
+    menuText = "## Site sections"
+    postText = "## Posts"
+    socialText = "## Social media links"
+
+    # Which sections should be included on which pages
+    # "main" indicates main page
+    # "list" indicate lists pages (like taxonomy and posts)
+    # "pages" indicate regular post pages
+    includeMenu = ["main", "lists", "pages" ]
+    includeCategories = ["main", "lists", "pages" ]
+    includeSocial = ["main", "lists", "pages" ]
+    includeReturnHome = ["main", "lists", "pages" ]
+    includeAuthor = ["main", "lists", "pages" ]
+
+# Menu links will be placed in the pages indicated in includeMenu 
+[[menu.main]]
+    name = "Home"
+    weight = 1
+    url = "/"
+[[menu.main]]
+    name = "Posts"
+    weight = 2
+    url  = "/posts/"
+[[menu.main]]
+    name = "About"
+    weight = 3
+    url = "/about/"
+
+# Social links will be placed in the pages indicated in includeSocial
+[[params.social]]
+    name = "Github"
+    weight = 1
+    url = "https://github.com/my-account/"
+[[params.social]]
+    name = "Mail"
+    weight = 2
+    url = "mailto:my-name@example.org"
+
+#######################################################
+# You may not need to touch the following configuration
+
+config = "config-gg.toml"
+metaDataFormat = "toml"
+
+# Disable files not needed for Gopher and Gemini
+disableRSS =     true
+disableSitemap = true
+disable404 =     true
+enableEmoji =    false
+
+# Directories used for Gopher and Gemini generation
+layoutDir =  "layouts-gg"
+publishDir = "public-gg"
+
+uglyURLs     = true
+relativeURLs = false
+canonifyURLs = true
+
+[mediaTypes]
+[mediaTypes."text/gemini"]
+  suffixes = ["gmi"]
+[mediaTypes."text/plain"]
+  suffixes = ["txt"]
+
+[outputs]
+  home = ["gemini", "gopher"]
+  section = ["gemini", "gopher"]
+  taxonomy = ["gemini", "gopher"]
+  term = ["gemini", "gopher"]
+  page = ["gemini", "gopher"]
+
+[outputFormats]
+[outputFormats.gopher]
+  name = "gopher"
+  mediaType = "text/plain"
+  baseName = "gophermap"
+  isPlainText = true
+  permalinkable = true
+  isHTML = false
+  protocol = "gopher://"
+  noUgly = false
+  path = "gopher/"
+  
+[outputFormats.Gemini]
+  name = "gemini"
+  mediaType = "text/gemini"
+  baseName = "gemini-page"
+  isPlainText = true
+  permalinkable = true
+  isHTML = false
+  protocol = "gemini://"
+  noUgly = false
+  path = "gemini/"
+
+

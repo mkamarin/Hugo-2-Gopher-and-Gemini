@@ -1,0 +1,13 @@
+[[[=> copyPage: {{- .Params.copypage -}},keepRaw: {{- .Params.keepraw -}},removeExtras: {{- .Params.removeExtras -}} <=]]]
+{{ if .Params.keepraw }}
+{{ .RawContent -}}
+{{ else }}
+# {{ .Title }}
+
+{{ .RawContent -}}
+{{- end }}
+{{ if .Params.removeextras }}
+{{ else }}
+{{ .Scratch.Set "type" "pages" }}
+{{ partial "extras.gemini.gmi" . }}
+{{ end }}

@@ -1,0 +1,21 @@
+[[[=> copyPage: {{- .Params.copypage -}},keepRaw: {{- .Params.keepraw -}},removeExtras: {{- .Params.removeExtras -}},fullLine: {{- .Site.Params.gopher.fullLine -}},textChar: {{- .Site.Params.gopher.textChar -}},host:{{- .Site.Params.gopher.host -}},port:{{- .Site.Params.gopher.port -}}  <=]]]
+i
+i{{ .Site.Title }}
+i
+{{- range (split .Site.Params.gopher.description "\n") }}
+i{{- . }}
+{{- end }}
+i
+{{- range (split .Site.Params.info "\n") }}
+i{{- . }}
+{{- end }}
+i
+{{ $content := .RawContent -}}
+{{ $content := $content | replaceRE "\t" "  " -}}
+{{- range (split $content "\n") }}
+i{{- . }}
+{{- end }}
+i
+{{ .Scratch.Set "type" "main" }}
+{{ partial "extras.gopher.txt" . }}
+.

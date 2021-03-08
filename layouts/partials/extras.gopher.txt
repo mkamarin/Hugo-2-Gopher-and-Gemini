@@ -1,0 +1,55 @@
+
+{{/********** MENU SECTION **********/}}
+{{ if in $.Site.Params.gopher.includeMenu ($.Scratch.Get "type") }}
+i{{ $.Site.Params.gopher.menuText }}
+{{- range .Site.Menus.main }}
+1{{- .Name }}	{{ .URL }}
+{{- end }}
+{{- end }}
+i
+{{/********** CATEGORIES SECTION **********/}}
+{{ if in $.Site.Params.gopher.includeCategories ($.Scratch.Get "type") }}
+{{ range $taxonomyname, $taxonomy := .Site.Taxonomies }}
+1{{ $taxonomyname }}:	{{ "/" | relLangURL}}{{ $taxonomyname | urlize }}
+{{ range $key, $value := $taxonomy }}
+1{{ $key }}	{{ $taxonomyname | relLangURL }}/{{ $key | urlize | lower }}/
+{{end}}
+{{end}}
+{{end}}
+{{ if eq "main" ($.Scratch.Get "type") }}
+{{/********** POSTS SECTION **********/}}
+i{{ $.Site.Params.gopher.postText }}
+{{/* with .Site.GetPage "/posts" */}}
+{{- range where .Site.RegularPages "Type" "posts" -}}
+{{- if .OutputFormats.Get "gopher" }}
+1{{ .Title }}	{{ replace .RelPermalink "/gopher" "" 1 }}
+i{{ .Params.summary }}
+i
+{{ end }}
+{{ end }}
+{{ end }}
+i
+{{/********** SOCIAL MEDIA SECTION **********/}}
+{{ if in $.Site.Params.gopher.includeSocial ($.Scratch.Get "type") }}
+i{{ $.Site.Params.gopher.socialText }}
+{{ with .Site.Params.social }}
+{{ range sort . "weight" }}
+h{{ .name }}	URL:{{ .url | safeURL }}
+{{ end }}
+{{ end }}
+{{ end }}
+i
+[[[=> references <=]]]
+i
+i
+{{/********** RETURN HOME SECTION **********/}}
+{{ if in $.Site.Params.gopher.includeReturnHome ($.Scratch.Get "type") }}
+1{{ $.Site.Params.returnHome }}	/
+i
+{{ end }}
+i
+{{/********** AUTHOR AND COPYRIGHT SECTION **********/}}
+{{ if in $.Site.Params.gopher.includeAuthor ($.Scratch.Get "type") }}
+i{{ with .Site.Params.Author }} {{ . }} {{ end }}
+i{{ $.Site.Params.copyright }}
+{{ end }}

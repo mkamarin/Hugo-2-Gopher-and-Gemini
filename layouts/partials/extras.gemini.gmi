@@ -1,0 +1,56 @@
+
+{{/********** MENU SECTION **********/}}
+{{ if in $.Site.Params.gemini.includeMenu ($.Scratch.Get "type") -}}
+{{ $.Site.Params.gemini.menuText }}
+{{- range .Site.Menus.main }}
+{{- if eq .URL "/"}}
+=> {{ .URL }}index.gmi  {{ .Name }}
+{{- else }}
+=> {{ .URL }}.gmi  {{ .Name }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{/********** CATEGORIES SECTION **********/}}
+{{ if in $.Site.Params.gemini.includeCategories ($.Scratch.Get "type") -}}
+{{ range $taxonomyname, $taxonomy := .Site.Taxonomies }}
+=> {{ "/" | relLangURL}}{{ $taxonomyname | urlize }}.gmi  {{ $taxonomyname }}: 
+{{- range $key, $value := $taxonomy }}
+=> {{ $taxonomyname | relLangURL }}/{{ $key | urlize | lower }}.gmi   {{ $key }} 
+{{- end }}
+{{ end }}
+{{- end }}
+
+{{ if eq "main" ($.Scratch.Get "type") }}
+{{/********** POSTS SECTION **********/}}
+{{ $.Site.Params.gemini.postText }}
+{{/*- with .Site.GetPage "/posts" -*/}}
+{{- range where .Site.RegularPages "Type" "posts" -}}
+{{- if .OutputFormats.Get "gemini" }}
+{{- $postLink := replace .RelPermalink "/gemini" "" 1 -}}
+=> {{ replace $postLink "/gemini-page" "" 1}}  {{.Date.Format "January 2, 2006"}} {{ .Title }}
+{{ .Params.summary }}
+{{ end }}
+{{- end }}
+{{ end }}
+
+{{/********** SOCIAL MEDIA SECTION **********/}}
+{{ if in $.Site.Params.gemini.includeSocial ($.Scratch.Get "type") }}
+{{ $.Site.Params.gemini.socialText }}
+{{- with .Site.Params.social -}}
+{{ range sort . "weight" }}
+=> {{ .url | safeURL }}  {{ .name }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+[[[=> references <=]]]
+{{/********** RETURN HOME SECTION **********/}}
+{{ if in $.Site.Params.gemini.includeReturnHome ($.Scratch.Get "type") }}
+=> /index.gmi  {{ $.Site.Params.returnHome }}
+{{- end }}
+
+{{/********** AUTHOR AND COPYRIGHT SECTION **********/}}
+{{ if in $.Site.Params.gemini.includeAuthor ($.Scratch.Get "type") }}
+{{ with .Site.Params.Author }} {{ . }} {{ end }}
+{{ $.Site.Params.copyright }}
+{{ end }}

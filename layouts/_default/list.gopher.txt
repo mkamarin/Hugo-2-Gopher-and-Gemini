@@ -1,0 +1,20 @@
+[[[=> copyPage: {{- .Params.copypage -}},keepRaw: {{- .Params.keepraw -}},removeExtras: {{- .Params.removeExtras -}},fullLine: {{- .Site.Params.gopher.fullLine -}},textChar: {{- .Site.Params.gopher.textChar -}},host:{{- .Site.Params.gopher.host -}},port:{{- .Site.Params.gopher.port -}}  <=]]]
+i{{ .Title }}
+{{ $content := .RawContent -}}
+{{ $content := $content | replaceRE "\t" "  " -}}
+{{- range (split $content "\n") }}
+i{{- . }}
+{{- end }}
+i
+{{ range .Paginator.Pages }}
+{{- if .OutputFormats.Get "gopher" }}
+1{{ .Date.Format (.Site.Params.dateFormat | default "January 2, 2006" ) }} {{ .Title }}	/{{ replace .File.Path ".md" "" }}
+{{ end }}
+{{ end }}
+i
+{{ if .Params.removeextras }}
+{{ else }}
+{{ .Scratch.Set "type" "lists" }}
+{{ partial "extras.gopher.txt" . }}
+.
+{{- end -}}
