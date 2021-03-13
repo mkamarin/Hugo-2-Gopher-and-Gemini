@@ -1,9 +1,25 @@
 #!/usr/bin/python3 -u
 
-""" Convert a static web site to and enbedded system
+""" Hugo 2 Gopher and Gemini (hugo2gg.py)
 
-This script can be used to encode an static web site (for example one generated
-by Hugo (https://gohugo.io/) to an embedded site to be hosted in a microcontroller
+    A Hugo theme to convert a Hugo site to a Gopher hole and/or to a 
+    Gemini capsule.
+
+    Copyright (C) 2021 Mike Marin -- All Rights Reserved
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, version 3 of the License.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+    You can contact me at mmarin <at> acm <dot> org
 """
 
 import os
@@ -20,6 +36,7 @@ import subprocess
 
 verbose = False
 keepTmpFiles = False
+gopherLineLength = 70
 
 def vbprint(*args, **kwargs):
     if verbose:
@@ -40,6 +57,7 @@ def warn(*args, **kwargs):
                 *args, **kwargs, sep="", file = sys.stderr)
     else:
         print("WARNING: ", *args, **kwargs, sep="", file = sys.stderr)
+
 
 def delete_file(name, clean = True):
     if keepTmpFiles:
@@ -110,14 +128,14 @@ def clone_file(src, dst):
 
         with open(src, 'rb') as flSrc:
             with open(dst, 'wb') as flDst:
-                flDst.write(flSrc.read())
+                flDst.write(flSrc.read(4096))
 
     except OSError as e:
         error(e, " while processing files", src,"=>",dst)
 
 
 def justify (txt):
-    missing = 70 - len(txt)
+    missing = gopherLineLength - len(txt)
     leading = 0
     if missing == 0:
         return txt
@@ -175,7 +193,7 @@ def gopher_text(txt, prefix):
 
     # Now break long lines into chunks of around 70 chars
     i = 0
-    n = 70 # Magic gopher number
+    n = gopherLineLength # Magic gopher number
     firstTime = True
     while i < len(txt):
         if i + n < len(txt):
@@ -284,11 +302,12 @@ def convert_gopher(src, dst, arPath, arLast):
         if uri[0] == '/':
             mime = mimetypes.MimeTypes().guess_type(uri)[0]
             if not mime:
-                return '1'
+                if uri.endswith('gophermap'):
+                    return '0'
+                else:
+                    return '1' # Assume directory
             mm = mime.split('/')
-            if not mime:
-                item = '1' # Directory
-            elif mime == 'image/gif':
+            if mime == 'image/gif':
                 item = 'g' # GIF graphic
             elif mime == 'text/html':
                 item = 'h' # HTML file
@@ -306,7 +325,7 @@ def convert_gopher(src, dst, arPath, arLast):
 
 
     # Notes on gophermap syntax (https://tools.ietf.org/html/rfc1436): 
-    # 1- gopher text lines keep to 70 chars
+    # 1- gopher text lines should be keep to 70 chars (or 67 chars)
     # 2- lines must end with <CR><LF> (meaning '\r\n')
     vbprint("CONVERT:",src,"->",dst)
     replacePage = False
@@ -359,8 +378,9 @@ def convert_gopher(src, dst, arPath, arLast):
                 isFenced  = not isFenced
                 continue
             if isFenced:
-                if len(line.split('\t',1)[0]) > 70:
-                    warn("Fenced line too long (exceed 70 chars by ",len(line.split('\t',1)[0])-70," chars) in '",src,"', line",count)
+                if len(line.split('\t',1)[0]) > gopherLineLength:
+                    warn("Fenced line too long (exceed ",gopherLineLength," chars by ",
+                            len(line.split('\t',1)[0])-gopherLineLength," chars) in '",src,"', line",count)
                 flDst.write(line + lineEnd)
                 continue
             if not line:
@@ -461,6 +481,9 @@ def convert_gemini(src, dst, arPath, arLast):
                 if arg:
                     continue
             count += 1
+
+            ## Note that gemini lines can end on <CR><LF> or just in <LF>
+            ## so, we don't need to worry as much as with gopher
             if arg and arg['copyPage']:
                 replacePage = True
                 break
@@ -694,9 +717,10 @@ def arguments() :
     print("                                gopher   Generate only the gopher hole")
     print("                                gemini   Generate only the gemini capsule")
     print("   -k, --keep            Keep processed temporary files for debugging purposes")
-    print("   -n, --no-hugo         Do not run  hugo. Remember to run hugo before this.")
+    print("   -m, --max-line <num>  Max lenght of gophermap lines (default 70 but some prefer 67)")
+    print("   -n, --no-hugo         Do not run  hugo. Remember to run hugo before")
     print("   -h, --help            Prints this help")
-    print("   -v, --verbose         Produces verbose stdout ourput")
+    print("   -v, --verbose         Produces verbose stdout output")
     sys.exit(2)
 
 
@@ -721,6 +745,7 @@ def main(argv):
    except getopt.GetoptError as e:
       error(e)
       arguments()
+
    for opt, arg in opts:
       nargs += 1
       if (opt in ("-h","--help")) or (len(sys.argv) == 1):
@@ -744,6 +769,9 @@ def main(argv):
           verbose = True
       elif opt in ("-n", "--no-hugo"):
           arNoHugo = True
+      elif opt in ("-m", "--max-line"):
+          global gopherLineLength
+          gopherLineLength = int(arg)
       elif opt in ("-k", "--keep"):
           global keepTmpFiles
           keepTmpFiles = True
