@@ -35,7 +35,7 @@ import mimetypes
 import subprocess
 
 verbose = False
-keepTmpFiles = False
+keepTmpFiles = True
 gopherLineLength = 70
 
 def vbprint(*args, **kwargs):
@@ -45,7 +45,8 @@ def vbprint(*args, **kwargs):
 
 def error(*args, **kwargs):
     if verbose:
-        print("ERROR [",os.path.basename(sys.argv[0]),":",inspect.currentframe().f_back.f_lineno,"]: ",
+        print("ERROR [",os.path.basename(sys.argv[0]),":",
+                inspect.currentframe().f_back.f_lineno,"]: ",
                 *args, **kwargs, sep="", file = sys.stderr)
     else:
         print("ERROR: ", *args, **kwargs, sep="", file = sys.stderr)
@@ -53,7 +54,8 @@ def error(*args, **kwargs):
 
 def warn(*args, **kwargs):
     if verbose:
-        print("WARNING [",os.path.basename(sys.argv[0]),":",inspect.currentframe().f_back.f_lineno,"]: ",
+        print("WARNING [",os.path.basename(sys.argv[0]),":",
+                inspect.currentframe().f_back.f_lineno,"]: ",
                 *args, **kwargs, sep="", file = sys.stderr)
     else:
         print("WARNING: ", *args, **kwargs, sep="", file = sys.stderr)
@@ -146,7 +148,8 @@ def justify (txt):
     blanks = re.findall(r'\s+', txt.strip())
     nblanks = len(words) - 1
     if nblanks != len(blanks):
-        error("INTERNAL Error mistmatch of spaces (nblanks:",nblanks," len(blanks):",len(blanks),
+        error("INTERNAL Error mistmatch of spaces (nblanks:",nblanks,
+                " len(blanks):",len(blanks),
                 "\nwords:",words,"\nblanks:",blanks,"\nTXT:|",txt,"|")
     if nblanks < 1:
         warn("Line too long without a blank (",nblanks, ")=>[",words,"]")
@@ -229,6 +232,7 @@ def extract_arg(line):
     pairs = line.split(',')
     for pair in pairs:
         single = pair.split(':')
+        vbprint("Page arg:", single)
         if len(single) == 2:
             arg[single[0]] = True if single[1] == 'true' else False if single[1] == 'false' else single[1]
     return arg
@@ -260,7 +264,7 @@ def clean_markdown(line):
     return line
 
 
-def extract_links(line, pageLinks):
+def extract_links(line, pageLinks, ignoreLinks = False):
     lineLinks = re.findall(r'!?\[[^\]]*\]\([^\)]*\)|<[^<]+[@:][^<]+>',line)
     for link in lineLinks:
         if link[0] == '<' and link[-1] == '>':
@@ -271,12 +275,13 @@ def extract_links(line, pageLinks):
         ref = link.split('](')
         if len(ref) != 2:
             error(" Invalid link '",src,"', line ",count,":",link);
+        citeId = ' [' + str(pageLinks[link]) + ']' 
         if ref[0][0] == '!':
-            cite = ref[0][2:] + ' [' + str(pageLinks[link]) + ']'
+            cite = ref[0][2:] + citeId if not ignoreLinks else ""
         else:
-            cite = ref[0][1:] + ' [' + str(pageLinks[link]) + ']'
+            cite = ref[0][1:] + citeId if not ignoreLinks else ""
         line = line.replace(link,cite)
-    return line, pageLinks
+    return line, pageLinks if not ignoreLinks else {}
 
 
 def one_line_link(line):
@@ -344,9 +349,11 @@ def convert_gopher(src, dst, arPath, arLast):
         def print_references(prefix):
             if len(pageLinks) == 0:
                 if countOtherLinks  == 0:
-                    warn("No links in '",src,"', it should be better be a txt file (instead of a gophermap)")
+                    warn("No links in '",src,
+                            "', it should be better be a txt file (instead of a gophermap)")
                 return
-            flDst.write(prefix + '\t' + filler + lineEnd + prefix + 'References:\t' + filler + lineEnd)
+            flDst.write(prefix + '\t' + filler + lineEnd + prefix + 
+                    'References:\t' + filler + lineEnd)
             for key, value in sorted(pageLinks.items(), key=lambda item: item[1]):
                 ref = key.split('](')
                 hint = 'I' if ref[0][0] == '!' else 'h'
@@ -355,16 +362,17 @@ def convert_gopher(src, dst, arPath, arLast):
                 lineItem = item_type(uri, hint)
                 if lineItem == 'h':
                     uri = 'URL:' + uri
-                flDst.write(lineItem + '  [' + str(value) + '] ' + label + '\t' + uri + filler + lineEnd)
+                flDst.write(lineItem + '  [' + str(value) + '] ' + label + '\t'
+                        + uri + filler + lineEnd)
 
 
         while True:
             line = flSrc.readline()
             if not line:
                 break
-            if count == 0:
+            if (count == 0) and not arg:
                 arg = extract_arg(line)
-                if arg:
+                if arg or (len(line.strip('\r\n\t ')) == 0):
                     continue
             count += 1
             if arg and arg['copyPage']:
@@ -378,10 +386,15 @@ def convert_gopher(src, dst, arPath, arLast):
                 isFenced  = not isFenced
                 continue
             if isFenced:
-                if len(line.split('\t',1)[0]) > gopherLineLength:
+                linePart = line.split('\t')
+                if len(linePart[0]) > gopherLineLength:
                     warn("Fenced line too long (exceed ",gopherLineLength," chars by ",
-                            len(line.split('\t',1)[0])-gopherLineLength," chars) in '",src,"', line",count)
-                flDst.write(line + lineEnd)
+                            len(line.split('\t',1)[0])-gopherLineLength," chars) in '",
+                            src,"', line",count)
+                if linePart[0][0] != 'i':
+                    error("Non 'i' Fenced line") 
+
+                flDst.write(line + ('\t/' if len(linePart) < 2 else '') + lineEnd)
                 continue
             if not line:
                 continue
@@ -412,17 +425,22 @@ def convert_gopher(src, dst, arPath, arLast):
             # Links alone in a single line shoul be placed in the same line
             single = one_line_link(line)
             if single:
-                flDst.write(item_type(single['uri'], single['hint']) + '  ' + single['label'] + '\t' + single['uri'] + filler + lineEnd)
+                if arg and arg['ignoreLinks']:
+                    flDst.write(single['label'] + lineEnd)
+                else:
+                    flDst.write(item_type(single['uri'], single['hint']) + '  ' + 
+                            single['label'] + '\t' + single['uri'] + filler + lineEnd)
                 continue
 
             # Links embeded in the text of the line must be collected for late placement
-            linePart[0], pageLinks = extract_links(linePart[0], pageLinks)
+            linePart[0], pageLinks = extract_links(linePart[0], pageLinks, arg and arg['ignoreLinks'])
 
             linePart[0] = clean_markdown(linePart[0])
             if linePart[0][0] in ['0','1','4','5','6','9','g','I','h','s']:
                 countOtherLinks += 1
             if linePart[0][0] == 'i':
-                lines = gopher_text(linePart[0][1:], 'i' if arg and (arg['textChar'] or arg['fullLine']) else '')
+                lines = gopher_text(linePart[0][1:], 
+                        'i' if arg and (arg['textChar'] or arg['fullLine']) else '')
                 for l in lines:
                     if nLineParts > 3:
                         lne = l + '\t' + linePart[1] + '\t' + linePart[2]+ '\t' + linePart[3]
@@ -456,6 +474,7 @@ def convert_gemini(src, dst, arPath, arLast):
         count = 0
         isFenced = False
         pageLinks = {}
+        arg = {}
 
         flSrc = open(src, 'rt')
         flDst = open(dst, 'wt')
@@ -467,18 +486,20 @@ def convert_gemini(src, dst, arPath, arLast):
             for key, value in sorted(pageLinks.items(), key=lambda item: item[1]):
                 ref = key.split('](')
                 if ref[0][0] == '!':
-                    flDst.write('=> ' + urllib.parse.quote(ref[1][:-1],':/?=+&') + '  [' + str(value) + '] ' + ref[0][2:] + '\n')
+                    flDst.write('=> ' + urllib.parse.quote(ref[1][:-1],':/?=+&') 
+                            + '  [' + str(value) + '] ' + ref[0][2:] + '\n')
                 else:
-                    flDst.write('=> ' + urllib.parse.quote(ref[1][:-1],':/?=+&') + '  [' + str(value) + '] ' + ref[0][1:] + '\n')
+                    flDst.write('=> ' + urllib.parse.quote(ref[1][:-1],':/?=+&')
+                            + '  [' + str(value) + '] ' + ref[0][1:] + '\n')
             flDst.write('\n')
 
         while True:
             line = flSrc.readline()
             if not line:
                 break
-            if count == 0:
+            if (count == 0) and not arg:
                 arg = extract_arg(line)
-                if arg:
+                if arg or (len(line.strip('\r\n\t ')) == 0):
                     continue
             count += 1
 
@@ -492,6 +513,7 @@ def convert_gemini(src, dst, arPath, arLast):
                 continue
             if re.search(r"^\s*```",line): #toggle fenced code
                 isFenced  = not isFenced
+                continue
             if isFenced:
                 flDst.write(clean_markdown(line))
                 continue
@@ -500,11 +522,12 @@ def convert_gemini(src, dst, arPath, arLast):
             single = one_line_link(line.strip('\r\n'))
             if single:
                 #flDst.write('=> ' + single['uri'] + '   ' + single['label'] + '\n')
-                flDst.write('=> ' + urllib.parse.quote(single['uri'],':/?=+&') + '   ' + single['label'] + '\n')
+                flDst.write('=> ' + urllib.parse.quote(single['uri'],':/?=+&') 
+                        + '   ' + single['label'] + '\n')
                 continue
 
             # Links embeded in the text of the line must be collected for late placement
-            line, pageLinks = extract_links(line, pageLinks)
+            line, pageLinks = extract_links(line, pageLinks, arg and arg['ignoreLinks'])
 
             if line.strip() == '[[[=> references <=]]]':
                 print_references()
@@ -541,7 +564,8 @@ def traverse_gemini(arGemini, arPath, arLast):
                 # ext is the file extension
                 name, ext = os.path.splitext(filename)
 
-                vbprint("CAPSULE: rootDir='",rootDir,"', subDirs=",subdirs,", filename='",filename,"'", sep="")
+                vbprint("CAPSULE: rootDir='",rootDir,"', subDirs=",subdirs
+                        ,", filename='",filename,"'", sep="")
 
                 if ext.lower() == ".gmi":
                     count += 1
@@ -551,9 +575,11 @@ def traverse_gemini(arGemini, arPath, arLast):
                     os.rename(sourceName, sourceName + "-old")
                     folder = os.path.dirname(rootDir)
                     if folder == arPath:
-                        convert_gemini(sourceName + "-old", os.path.join(rootDir, base + ".gmi"), arPath, arLast)
+                        convert_gemini(sourceName + "-old", os.path.join(rootDir, 
+                            base + ".gmi"), arPath, arLast)
                     else:
-                        convert_gemini(sourceName + "-old", os.path.join(folder, base + ".gmi"), arPath, arLast)
+                        convert_gemini(sourceName + "-old", os.path.join(folder, 
+                            base + ".gmi"), arPath, arLast)
 
             except OSError as e:
                 error(e," while processing gemini file", filename)
@@ -575,11 +601,13 @@ def traverse_gopher(arGopher, arPath, arLast):
                 # sourceName is the complete file name including the folder structure (full path)
                 sourceName = os.path.join(rootDir, filename)
 
-                vbprint("HOLE: rootDir='",rootDir,"', subDirs=",subdirs,", filename='",filename,"'", sep="")
+                vbprint("HOLE: rootDir='",rootDir,"', subDirs=",subdirs,
+                        ", filename='",filename,"'", sep="")
 
                 if filename.lower() == "gophermap.txt":
                     count += 1
-                    convert_gopher(sourceName, os.path.join(rootDir, "gophermap"), arPath, arLast)
+                    convert_gopher(sourceName, os.path.join(rootDir, "gophermap"), 
+                            arPath, arLast)
 
             except OSError as e:
                 error(e," while processing gopher file", filename)
@@ -600,7 +628,8 @@ def traverse_site(arPath, arGopher, typeGopher, arGemini, typeGemini):
     for rootDir, subdirs, filenames in os.walk(arPath):
         try:
             for filename in filenames:
-                vbprint("SOURCE: rootDir='",rootDir,"', subDirs=",subdirs,", filename='",filename,"'", sep="")
+                vbprint("SOURCE: rootDir='",rootDir,"', subDirs=",
+                        subdirs,", filename='",filename,"'", sep="")
 
                 ## A) Prepare to process the file
                 # sourceName is the complete file name including the directory structure (full path)
@@ -615,7 +644,8 @@ def traverse_site(arPath, arGopher, typeGopher, arGemini, typeGemini):
                 ## Process gopher or gemini files that are in the right directory structure
                 ## Meaning files that are under the correct arGopher or arGemini directory
                 if (((len(rootDir) >= lenArGopher) and (rootDir[0:lenArGopher] == arGopher))
-                        or ((len(rootDir) >= lenArGemini) and (rootDir[0:lenArGemini] == arGemini))):
+                        or ((len(rootDir) >= lenArGemini)
+                            and (rootDir[0:lenArGemini] == arGemini))):
                     vbprint("=>",rootDir, ":", [arGopher, arGemini])
 
                     continue
@@ -679,7 +709,8 @@ def fix_hugo_nested_paths(arPath, arGemini, arGopher):
                 for filename in filenames:
                     sourceName = os.path.join(rootDir, filename)
                     if isGemini:
-                        targetName = os.path.join(os.path.dirname(rootDir), filename).replace(path, goodPath, 1)
+                        targetName = os.path.join(os.path.dirname(rootDir),
+                                filename).replace(path, goodPath, 1)
                     else:
                         targetName = sourceName.replace(path, goodPath, 1)
                     clone_file(sourceName, targetName)
@@ -690,7 +721,8 @@ def fix_hugo_nested_paths(arPath, arGemini, arGopher):
 
 
 def execHugo(arNoHugo, arPath, arConfig, arEmpty):
-    hugo = ['hugo', '--config', arConfig, '--destination', arPath, '--layoutDir', arEmpty, '--disableKinds', 'sitemap']
+    hugo = ['hugo', '--config', arConfig, '--destination', arPath,
+            '--layoutDir', arEmpty, '--disableKinds', 'sitemap']
     cmd = ' '.join(hugo)
     if arNoHugo:
         print("Skipping hugo execution (suggest:",cmd,")")
@@ -741,7 +773,8 @@ def main(argv):
 
    try:
        opts, args = getopt.getopt(argv,"he:p:l:c:g:G:vt:kn",
-               ["help","empty=","path=","last=","config=","gopher=","gemini=","verbose","type=","keep","no-hugo"])
+               ["help","empty=","path=","last=","config=","gopher=",
+                   "gemini=","verbose","type=","keep","no-hugo"])
    except getopt.GetoptError as e:
       error(e)
       arguments()

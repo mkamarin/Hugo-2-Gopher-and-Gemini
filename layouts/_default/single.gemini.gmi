@@ -19,15 +19,15 @@
 
     You can contact me at mmarin <at> acm <dot> org
 */}}
-[[[=> copyPage: {{- .Params.copypage -}},keepRaw: {{- .Params.keepraw -}},removeExtras: {{- .Params.removeExtras -}} <=]]]
-{{ if .Params.keepraw }}
+[[[=> page:page,copyPage: {{- .Params.ggcopypage -}},keepRaw: {{- .Params.ggkeepraw -}},removeExtras: {{- .Params.ggremoveExtras -}},ignoreLinks: {{- .Params.ggignoreLinks -}} <=]]]
+{{ if .Params.ggkeepraw }}
 {{ .RawContent -}}
 {{ else }}
 # {{ .Title }}
 
 {{ .RawContent -}}
 {{- end }}
-{{ if .Params.removeextras }}
+{{ if or .Params.ggremoveextras .Params.ggignorelinks }}
 {{ else }}
 {{ .Scratch.Set "type" "pages" }}
 {{ partial "extras.gemini.gmi" . }}

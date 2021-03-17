@@ -19,7 +19,7 @@
 
     You can contact me at mmarin <at> acm <dot> org
 */}}
-[[[=> copyPage: {{- .Params.copypage -}},keepRaw: {{- .Params.keepraw -}},removeExtras: {{- .Params.removeExtras -}},fullLine: {{- .Site.Params.gopher.fullLine -}},textChar: {{- .Site.Params.gopher.textChar -}},host:{{- .Site.Params.gopher.host -}},port:{{- .Site.Params.gopher.port -}}  <=]]]
+[[[=> page:main,copyPage: {{- .Params.ggcopypage -}},keepRaw: {{- .Params.ggkeepraw -}},removeExtras: {{- .Params.ggremoveExtras -}},ignoreLinks: {{- .Params.ggignorelinks -}},fullLine: {{- .Site.Params.gopher.fullLine -}},textChar: {{- .Site.Params.gopher.textChar -}},host:{{- .Site.Params.gopher.host -}},port:{{- .Site.Params.gopher.port -}}  <=]]]
 i
 i{{ .Site.Title }}
 i
@@ -39,4 +39,3 @@ i{{- . }}
 i
 {{ .Scratch.Set "type" "main" }}
 {{ partial "extras.gopher.txt" . }}
-.

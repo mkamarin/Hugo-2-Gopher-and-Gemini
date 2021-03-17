@@ -4,10 +4,13 @@ date: {{ .Date }}
 description: ""
 tags: [""]
 categories: [""]
-#outputs: ["html", "rss", "gemini", "gopher"]
-keepRaw: false
-removeExtras: false
-copyPage: false
 draft: true
+
+#outputs: ["html", "rss", "gemini", "gopher"]
+
+ggKeepRaw: false
+ggRemoveExtras: false
+ggCopyPage: false
+ggIgnoreLinks: false
 ---
 

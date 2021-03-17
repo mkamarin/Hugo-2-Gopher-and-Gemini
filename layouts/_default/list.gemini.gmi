@@ -19,7 +19,7 @@
 
     You can contact me at mmarin <at> acm <dot> org
 */}}
-[[[=> copyPage: {{- .Params.copypage -}},keepRaw: {{- .Params.keepraw -}},removeExtras: {{- .Params.removeExtras -}} <=]]]
+[[[=> page:list,copyPage: {{- .Params.ggcopypage -}},keepRaw: {{- .Params.ggkeepraw -}},removeExtras: {{- .Params.ggremoveExtras -}},ignoreLinks: {{- .Params.ggignorelinks -}} <=]]]
 # {{ .Title }}
 
 {{ .RawContent }}
@@ -29,7 +29,7 @@
 {{- end }}
 {{- end }}
 
-{{ if .Params.removeextras }}
+{{ if .Params.ggremoveextras }}
 {{ else }}
 {{ .Scratch.Set "type" "lists" }}
 {{ partial "extras.gemini.gmi" . }}

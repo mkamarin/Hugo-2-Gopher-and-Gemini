@@ -19,8 +19,8 @@
 
     You can contact me at mmarin <at> acm <dot> org
 */}}
-[[[=> copyPage: {{- .Params.copypage -}},keepRaw: {{- .Params.keepraw -}},removeExtras: {{- .Params.removeExtras -}},fullLine: {{- .Site.Params.gopher.fullLine -}},textChar: {{- .Site.Params.gopher.textChar -}},host:{{- .Site.Params.gopher.host -}},port:{{- .Site.Params.gopher.port -}}  <=]]]
-{{ if .Params.keepraw }}
+[[[=> page:page,copyPage: {{- .Params.ggcopypage -}},keepRaw: {{- .Params.ggkeepraw -}},removeExtras: {{- .Params.ggremoveExtras -}},ignoreLinks: {{- .Params.ggignorelinks -}},fullLine: {{- .Site.Params.gopher.fullLine -}},textChar: {{- .Site.Params.gopher.textChar -}},host:{{- .Site.Params.gopher.host -}},port:{{- .Site.Params.gopher.port -}}  <=]]]
+{{ if .Params.ggkeepraw }}
 {{ .RawContent -}}
 {{ else }}
 i{{ .Title }}
@@ -36,9 +36,8 @@ i
 i{{- . }}
 {{- end }}
 {{- end }}
-{{ if .Params.removeextras }}
+{{ if or .Params.ggremoveextras .Params.ggignorelinks }}
 {{ else }}
 {{ .Scratch.Set "type" "pages" }}
 {{ partial "extras.gopher.txt" . }}
-.
 {{- end -}}

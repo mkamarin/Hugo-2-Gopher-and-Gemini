@@ -19,7 +19,7 @@
 
     You can contact me at mmarin <at> acm <dot> org
 */}}
-[[[=> copyPage: {{- .Params.copypage -}},keepRaw: {{- .Params.keepraw -}},removeExtras: {{- .Params.removeExtras -}},fullLine: {{- .Site.Params.gopher.fullLine -}},textChar: {{- .Site.Params.gopher.textChar -}},host:{{- .Site.Params.gopher.host -}},port:{{- .Site.Params.gopher.port -}}  <=]]]
+[[[=> page:list,copyPage: {{- .Params.ggcopypage -}},keepRaw: {{- .Params.ggkeepraw -}},removeExtras: {{- .Params.ggremoveExtras -}},ignoreLinks: {{- .Params.ggignorelinks -}},fullLine: {{- .Site.Params.gopher.fullLine -}},textChar: {{- .Site.Params.gopher.textChar -}},host:{{- .Site.Params.gopher.host -}},port:{{- .Site.Params.gopher.port -}}  <=]]]
 i{{ .Title }}
 {{ $content := .RawContent -}}
 {{ $content := $content | replaceRE "\t" "  " -}}
@@ -33,9 +33,8 @@ i
 {{ end }}
 {{ end }}
 i
-{{ if .Params.removeextras }}
+{{ if .Params.ggremoveextras }}
 {{ else }}
 {{ .Scratch.Set "type" "lists" }}
 {{ partial "extras.gopher.txt" . }}
-.
 {{- end -}}
