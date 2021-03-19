@@ -22,7 +22,7 @@
 [[[=> page:list,copyPage: {{- .Params.ggcopypage -}},keepRaw: {{- .Params.ggkeepraw -}},removeExtras: {{- .Params.ggremoveExtras -}},ignoreLinks: {{- .Params.ggignorelinks -}},fullLine: {{- .Site.Params.gopher.fullLine -}},textChar: {{- .Site.Params.gopher.textChar -}},host:{{- .Site.Params.gopher.host -}},port:{{- .Site.Params.gopher.port -}}  <=]]]
 i{{ .Title }}
 {{ $content := .RawContent -}}
-{{ $content := $content | replaceRE "\t" "  " -}}
+{{ $content := $content | replaceRE "\t" "    " -}}
 {{- range (split $content "\n") }}
 i{{- . }}
 {{- end }}

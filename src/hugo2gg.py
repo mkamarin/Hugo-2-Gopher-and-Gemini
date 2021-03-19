@@ -61,6 +61,143 @@ def warn(*args, **kwargs):
         print("WARNING: ", *args, **kwargs, sep="", file = sys.stderr)
 
 
+class Markdown_reader:
+    #### Markdown (Golmark / CommonMark) line reader
+    ## Designed to work with Hugo-2-Gopher-and-Gemini theme
+    ## where every line has a item type (all text comes with 'i')
+
+    ## Not OK in any of the two lines:
+    re_empty  = re.compile(r"^\s*$")      ## Empty
+    re_fence  = re.compile(r"^\s*```")    ## Fencing
+    re_glink  = re.compile(r'^\s*=>')     ## gemini links
+    re_head1  = re.compile(r'^\s*#+')     ## Headings
+    re_head2  = re.compile(r'^\s*===+')   ## Headings
+    re_head3  = re.compile(r'^\s*---+')   ## Headings
+    re_quote  = re.compile(r'^\s*>')      ## Blockquotes
+    re_llink  = re.compile(r'^i?\s*!?\[[^\]]*\]\([^\)]*\)\s*$|^i?\s*<[^<]+[@:][^<]+>\s*$') ## One line link
+
+    ## OK in the first line, but not in the second line:
+    re_ulist  = re.compile(r'^\s[\*-+] ') ## Unordered lists
+    re_olist  = re.compile(r'^\s*\d+\. ') ## Ordered lists
+    re_ident1 = re.compile(r'^\t')        ## Indented element
+    re_ident2 = re.compile(r'^    ')      ## Indented element
+
+    ## Not OK in the first line, but OK in the second line:
+    re_break1 = re.compile(r'  $')        ## Line break
+    re_break2 = re.compile(r'<br>\s*$')   ## Line break
+
+    def __init__(this, src, isGopher):
+        this.isValid = True
+        try:
+            this.flSrc = open(src, 'rt')
+            this.count = 0
+            this.line = ''
+            this.nextline = ''
+            this.isGopher = isGopher # Look for lines with 'i' (gopher item type)
+            this.rest = ''
+        except OSError as e:
+            error(e, " while opening file", src)
+            this.isValid = False
+
+    def destroy(this): ## avoid using __del__
+        if not this.isValid:
+            return
+        try:
+            this.flSrc.close()
+        except OSError as e:
+            error(e, " while closing file", src)
+
+    def good(this):
+        ## Answer the question: is it OK to combine this.line with this.nextline?
+
+        def good_both(line):
+            ## Not OK in any of two consecutive lines:
+            if     (this.re_empty.search(line) or ## Empty
+                    this.re_fence.search(line) or ## Fencing
+                    this.re_glink.search(line) or ## gemini links
+                    this.re_head1.search(line) or ## Headings
+                    this.re_head2.search(line) or ## Headings
+                    this.re_head3.search(line) or ## Headings
+                    this.re_quote.search(line) or ## Blockquotes
+                    this.re_llink.search(line)):  ## One line link
+                return False
+            else:
+                return True
+
+        def good_first(line):
+            ## Not OK in the first line, but OK in the second line:
+            if     (this.re_break1.search(line) or  ## Line break
+                    this.re_break2.search(line)):   ## Line break
+                return False
+            else:
+                return True
+
+        def good_second(line):
+            ## OK in the first line, but not in the second line:
+            if     (this.re_ulist.search(line)  or ## Unordered lists
+                    this.re_olist.search(line)  or ## Ordered lists
+                    this.re_ident1.search(line) or ## Indented element
+                    this.re_ident2.search(line)):  ## Indented element
+                return False
+            else:
+                return True
+
+        assert (this.line + this.rest) and this.nextline
+        if this.isGopher and this.line and (this.line[0] == 'i') and (this.nextline[0] == 'i'):
+            line1 = this.line[1:]
+            line2 = this.nextline[1:]
+        elif this.isGopher:
+            return False
+        else:
+            line1 = this.line
+            line2 = this.nextline
+        return (good_both(line1)  and good_both(line2) and 
+                good_first(line1) and good_second(line2))
+
+    def get_line(this, isFenced):
+        if not this.isValid:
+            return ''
+        try:
+            while True:
+                if this.nextline:
+                    this.line = this.nextline
+                    this.nextline = ''
+                else:
+                    this.line = this.flSrc.readline()
+                if not this.line:
+                    this.rest = ''
+                    break
+                this.count += 1
+                assert not this.nextline
+                this.nextline = this.flSrc.readline()
+                if this.isGopher:
+                    if this.line[0] != 'i':
+                        this.rest = ''
+                        break
+                    ln = this.line.split('\t',1)
+                    this.line = ln[0]
+                    this.rest = '' if len(ln) <= 1 else '\t' + ln[1].rstrip('\r\n')
+                if (not isFenced) and (this.line + this.rest) and this.nextline and this.good():
+                    this.line = this.line.rstrip('\r\n')
+                    this.nextline = this.nextline if not this.isGopher else this.nextline[1:]
+                    if this.re_quote.search(this.nextline):  ## Blockquotes
+                        this.nextline = this.nextline.replace('>','',2)
+                    this.nextline = this.line.strip('\t ') + ' ' + this.nextline
+                    continue
+                else:
+                    break
+            if (not isFenced) and this.re_break2.search(this.line):  ## Line break
+                this.line = this.line.replace('<br>','')
+            return this.line + this.rest
+        except OSError as e:
+            error(e, " while reading file", src)
+
+    def get_count(this):
+        return this.count
+
+### End Markdown_reader
+
+
 def delete_file(name, clean = True):
     if keepTmpFiles:
         return
@@ -194,6 +331,14 @@ def gopher_text(txt, prefix):
     if len(txt) == 0:
         lines.append(prefix)
 
+    #### TODO:
+    ####       Need to redo this section using textwrap and identation for:
+    ####    Markdown_reader.re_quote.search(line)   ## Blockquotes
+    ####    Markdown_reader.re_ulist.search(line)   ## Unordered lists
+    ####    Markdown_reader.re_olist.search(line)   ## Ordered lists
+    ####    Markdown_reader.re_ident1.search(line)  ## Indented element
+    ####    Markdown_reader.re_ident2.search(line)  ## Indented element
+    
     # Now break long lines into chunks of around 70 chars
     i = 0
     n = gopherLineLength # Magic gopher number
@@ -238,7 +383,7 @@ def extract_arg(line):
     return arg
 
 
-def clean_markdown(line):
+def clean_markdown(line, add_LF = False):
     # strip bold and italic enclosed in asterisk (*)
     emphasis = re.findall(r'\*+[^\*]+\*+',line)
     for item in emphasis:
@@ -261,6 +406,8 @@ def clean_markdown(line):
     emphasis = re.findall(r"``.+``",line) # Will not work in all cases
     for item in emphasis:
         line = line.replace(item, item[2:-2])
+    if add_LF:
+        line = line.strip('\r\n ') + '\n'
     return line
 
 
@@ -308,7 +455,7 @@ def convert_gopher(src, dst, arPath, arLast):
             mime = mimetypes.MimeTypes().guess_type(uri)[0]
             if not mime:
                 if uri.endswith('gophermap'):
-                    return '0'
+                    return '0' # text file
                 else:
                     return '1' # Assume directory
             mm = mime.split('/')
@@ -328,11 +475,10 @@ def convert_gopher(src, dst, arPath, arLast):
                 item = '9' # default to Binary
         return item
 
-
     # Notes on gophermap syntax (https://tools.ietf.org/html/rfc1436): 
     # 1- gopher text lines should be keep to 70 chars (or 67 chars)
     # 2- lines must end with <CR><LF> (meaning '\r\n')
-    vbprint("CONVERT:",src,"->",dst)
+    vbprint("CONVERT Gophermap:",src,"->",dst)
     replacePage = False
     try:
         count = 0
@@ -343,7 +489,7 @@ def convert_gopher(src, dst, arPath, arLast):
         arg = {}
         filler = ""
 
-        flSrc = open(src, 'rt')
+        flSrc = Markdown_reader(src, True)
         flDst = open(dst, 'wt')
 
         def print_references(prefix):
@@ -367,7 +513,7 @@ def convert_gopher(src, dst, arPath, arLast):
 
 
         while True:
-            line = flSrc.readline()
+            line = flSrc.get_line(isFenced)
             if not line:
                 break
             if (count == 0) and not arg:
@@ -390,7 +536,7 @@ def convert_gopher(src, dst, arPath, arLast):
                 if len(linePart[0]) > gopherLineLength:
                     warn("Fenced line too long (exceed ",gopherLineLength," chars by ",
                             len(line.split('\t',1)[0])-gopherLineLength," chars) in '",
-                            src,"', line",count)
+                            src,"', line ",flSrc.get_count())
                 if linePart[0][0] != 'i':
                     error("Non 'i' Fenced line") 
 
@@ -415,7 +561,7 @@ def convert_gopher(src, dst, arPath, arLast):
             elif (nLineParts <= 2) and arg and arg['fullLine']:
                 filler = '\t' + arg['host'] + '\t' + arg['port']
             elif nLineParts > 4:
-                error(" Extra tabs in '",src,"', line ",count,":",linePart);
+                error(" Extra tabs in '",src,"', line ",flSrc.get_count(),":",linePart);
 
             if line.strip() == '[[[=> references <=]]]':
                 print_references('i' if arg and (arg['textChar'] or arg['fullLine']) else '')
@@ -438,12 +584,12 @@ def convert_gopher(src, dst, arPath, arLast):
             linePart[0] = clean_markdown(linePart[0])
             if linePart[0][0] in ['0','1','4','5','6','9','g','I','h','s']:
                 countOtherLinks += 1
-            if linePart[0][0] == 'i':
+            if linePart[0][0] == 'i': ### Text line
                 lines = gopher_text(linePart[0][1:], 
                         'i' if arg and (arg['textChar'] or arg['fullLine']) else '')
                 for l in lines:
                     if nLineParts > 3:
-                        lne = l + '\t' + linePart[1] + '\t' + linePart[2]+ '\t' + linePart[3]
+                        lne = l + '\t' + linePart[1] + '\t' + linePart[2] + '\t' + linePart[3]
                     elif nLineParts > 2:
                         lne = l + '\t' + linePart[1] + '\t' + linePart[2]
                     elif nLineParts > 1:
@@ -452,32 +598,40 @@ def convert_gopher(src, dst, arPath, arLast):
                         lne = l
                     flDst.write(lne + filler + lineEnd)
                 continue
+            elif (nLineParts > 1) and linePart[0][0] == '1': ### Directory line
+                if linePart[1].rstrip().endswith('gophermap'):
+                    linePart[1] = linePart[1].strip()[:-9].rstrip(os.sep)
+                    if nLineParts > 3:
+                        lne = linePart[0] + '\t' + linePart[1] + '\t' + linePart[2] + '\t' + linePart[3]
+                    elif nLineParts > 2:
+                        lne = linePart[0] + '\t' + linePart[1] + '\t' + linePart[2]
+                    else:
+                        lne = linePart[0]+ '\t' + linePart[1]
+                    flDst.write(lne + filler + lineEnd)
+                    continue
+
             flDst.write(line + filler + lineEnd)
 
+        flSrc.destroy()
+        flDst.close()
+        delete_file(src)
+        if replacePage:
+            delete_file(dst, False)
+            clone_file(dst.replace(arPath, arLast, 1), dst)
 
     except OSError as e:
         error(e, " while processing files", src,"=>",dst)
 
-    flSrc.close()
-    flDst.close()
-    delete_file(src)
-    if replacePage:
-        delete_file(dst, False)
-        clone_file(dst.replace(arPath, arLast, 1), dst)
-
 
 def convert_gemini(src, dst, arPath, arLast):
 
-    vbprint("CONVERT:",src,"->",dst)
+    vbprint("CONVERT Gemini map:",src,"->",dst)
     replacePage = False
     try:
         count = 0
         isFenced = False
         pageLinks = {}
         arg = {}
-
-        flSrc = open(src, 'rt')
-        flDst = open(dst, 'wt')
 
         def print_references():
             if len(pageLinks) == 0:
@@ -493,8 +647,11 @@ def convert_gemini(src, dst, arPath, arLast):
                             + '  [' + str(value) + '] ' + ref[0][1:] + '\n')
             flDst.write('\n')
 
+        flSrc = Markdown_reader(src, False)
+        flDst = open(dst, 'wt')
+
         while True:
-            line = flSrc.readline()
+            line = flSrc.get_line(isFenced)
             if not line:
                 break
             if (count == 0) and not arg:
@@ -512,10 +669,11 @@ def convert_gemini(src, dst, arPath, arLast):
                 flDst.write(line)
                 continue
             if re.search(r"^\s*```",line): #toggle fenced code
+                flDst.write(line.strip('\t\r\n ') + '\n')
                 isFenced  = not isFenced
                 continue
             if isFenced:
-                flDst.write(clean_markdown(line))
+                flDst.write(clean_markdown(line, True))
                 continue
             # need to extract and replace links [text]()
             # Links alone in a single line shoul be placed in the same line
@@ -533,18 +691,17 @@ def convert_gemini(src, dst, arPath, arLast):
                 print_references()
                 continue
 
-            flDst.write(clean_markdown(line))
+            flDst.write(clean_markdown(line, True))
 
+        flSrc.destroy()
+        flDst.close()
+        delete_file(src)
+        if replacePage:
+            delete_file(dst, False)
+            clone_file(dst.replace(arPath, arLast, 1), dst)
 
     except OSError as e:
         error(e, " while processing files", src,"=>",dst)
-
-    flSrc.close()
-    flDst.close()
-    delete_file(src)
-    if replacePage:
-        delete_file(dst, False)
-        clone_file(dst.replace(arPath, arLast, 1), dst)
 
 
 def traverse_gemini(arGemini, arPath, arLast):

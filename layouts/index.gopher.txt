@@ -32,7 +32,7 @@ i{{- . }}
 {{- end }}
 i
 {{ $content := .RawContent -}}
-{{ $content := $content | replaceRE "\t" "  " -}}
+{{ $content := $content | replaceRE "\t" "    " -}}
 {{- range (split $content "\n") }}
 i{{- . }}
 {{- end }}
