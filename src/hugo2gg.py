@@ -36,7 +36,7 @@ import mimetypes
 import subprocess
 
 verbose = False
-keepTmpFiles = True
+keepTmpFiles = False
 gopherLineLength = 70
 
 def vbprint(*args, **kwargs):
@@ -883,6 +883,7 @@ def fix_hugo_nested_paths(arPath, arGemini, arGopher):
 
 
 def execHugo(arNoHugo, arPath, arConfig, arEmpty):
+    print("Currently at", os.getcwd())
     hugo = ['hugo', '--config', arConfig, '--destination', arPath,
             '--layoutDir', arEmpty, '--disableKinds', 'sitemap']
     cmd = ' '.join(hugo)
