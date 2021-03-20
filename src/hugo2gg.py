@@ -30,6 +30,7 @@ import getopt
 import random
 import urllib
 import inspect
+import textwrap
 import datetime
 import mimetypes
 import subprocess
@@ -67,24 +68,24 @@ class Markdown_reader:
     ## where every line has a item type (all text comes with 'i')
 
     ## Not OK in any of the two lines:
-    re_empty  = re.compile(r"^\s*$")      ## Empty
-    re_fence  = re.compile(r"^\s*```")    ## Fencing
-    re_glink  = re.compile(r'^\s*=>')     ## gemini links
-    re_head1  = re.compile(r'^\s*#+')     ## Headings
-    re_head2  = re.compile(r'^\s*===+')   ## Headings
-    re_head3  = re.compile(r'^\s*---+')   ## Headings
-    re_quote  = re.compile(r'^\s*>')      ## Blockquotes
+    re_empty  = re.compile(r"^\s*$")            ## Empty
+    re_fence  = re.compile(r"^\s*```")          ## Fencing
+    re_glink  = re.compile(r'^\s*=>')           ## gemini links
+    re_head1  = re.compile(r'^\s*#+')           ## Headings
+    re_head2  = re.compile(r'^\s*===+')         ## Headings
+    re_head3  = re.compile(r'^\s*---+')         ## Headings
+    re_quote  = re.compile(r'^\s*>[ \t\v\f]*')  ## Blockquotes
     re_llink  = re.compile(r'^i?\s*!?\[[^\]]*\]\([^\)]*\)\s*$|^i?\s*<[^<]+[@:][^<]+>\s*$') ## One line link
 
     ## OK in the first line, but not in the second line:
-    re_ulist  = re.compile(r'^\s[\*-+] ') ## Unordered lists
-    re_olist  = re.compile(r'^\s*\d+\. ') ## Ordered lists
-    re_ident1 = re.compile(r'^\t')        ## Indented element
-    re_ident2 = re.compile(r'^    ')      ## Indented element
+    re_ulist  = re.compile(r'^\s*[-\*\+][ \t\v\f]+') ## Unordered lists
+    re_olist  = re.compile(r'^\s*\d+\.[ \t\v\f]+')   ## Ordered lists
+    re_ident1 = re.compile(r'^\t[ \t\v\f]*')         ## Indented element
+    re_ident2 = re.compile(r'^ {4}[ \t\v\f]*')       ## Indented element
 
     ## Not OK in the first line, but OK in the second line:
     re_break1 = re.compile(r'  $')        ## Line break
-    re_break2 = re.compile(r'<br>\s*$')   ## Line break
+    re_break2 = re.compile(r'<br>[ \t\v\f]*$')   ## Line break
 
     def __init__(this, src, isGopher):
         this.isValid = True
@@ -118,7 +119,6 @@ class Markdown_reader:
                     this.re_head1.search(line) or ## Headings
                     this.re_head2.search(line) or ## Headings
                     this.re_head3.search(line) or ## Headings
-                    this.re_quote.search(line) or ## Blockquotes
                     this.re_llink.search(line)):  ## One line link
                 return False
             else:
@@ -273,100 +273,6 @@ def clone_file(src, dst):
         error(e, " while processing files", src,"=>",dst)
 
 
-def justify (txt):
-    missing = gopherLineLength - len(txt)
-    leading = 0
-    if missing == 0:
-        return txt
-    while txt[leading] == ' ':
-        txt = txt[1:]
-        leading += 1
-    words = txt.split()
-    blanks = re.findall(r'\s+', txt.strip())
-    nblanks = len(words) - 1
-    if nblanks != len(blanks):
-        error("INTERNAL Error mistmatch of spaces (nblanks:",nblanks,
-                " len(blanks):",len(blanks),
-                "\nwords:",words,"\nblanks:",blanks,"\nTXT:|",txt,"|")
-    if nblanks < 1:
-        warn("Line too long without a blank (",nblanks, ")=>[",words,"]")
-
-    #print("JUSTIFY: missing=",missing,"blanks=",nblanks)
-    while (missing >= nblanks) and (nblanks > 0):
-        for i in range(len(blanks)):
-            blanks[i] += ' '
-        missing -= nblanks
-
-    flags = [True] * (nblanks)
-
-    while (missing > 0) and (nblanks > 0):
-        i = random.randint(0,nblanks-1)
-        if flags[i]:
-            blanks[i] += ' '
-            flags[i] = False
-            missing -= 1
-
-    text = ''
-    if leading > 0:
-        text = ' ' * leading
-    for i in range(len(blanks)):
-        text += words[i] + blanks[i]
-    text += words[-1]
-    #print("     1234567890123456789012345678901234567890123456789012345678901234567890\nTXT:", txt,"\n    ",text)
-    return text
-
-
-
-def gopher_text(txt, prefix):
-    lines = []
-
-    # Process headings
-    isHeader = False
-    if re.search(r"^\s*#+\s",txt):
-        txt = re.sub(r"^\s*#+\s",'',txt)
-        lines.append(prefix)
-        lines.append(prefix)
-        isHeader = True
-
-    if len(txt) == 0:
-        lines.append(prefix)
-
-    #### TODO:
-    ####       Need to redo this section using textwrap and identation for:
-    ####    Markdown_reader.re_quote.search(line)   ## Blockquotes
-    ####    Markdown_reader.re_ulist.search(line)   ## Unordered lists
-    ####    Markdown_reader.re_olist.search(line)   ## Ordered lists
-    ####    Markdown_reader.re_ident1.search(line)  ## Indented element
-    ####    Markdown_reader.re_ident2.search(line)  ## Indented element
-    
-    # Now break long lines into chunks of around 70 chars
-    i = 0
-    n = gopherLineLength # Magic gopher number
-    firstTime = True
-    while i < len(txt):
-        if i + n < len(txt):
-            t = i + n
-            while t > i and txt[t] != ' ':
-                t -= 1
-            if t == i:
-                t = i + n
-            if firstTime:
-                lines.append(prefix + justify(txt[i:t].rstrip()))
-            else:
-                lines.append(prefix + justify(txt[i:t].strip()))
-            i = t
-        else:
-            if firstTime:
-                lines.append(prefix + txt[i:len(txt)].rstrip())
-            else:
-                lines.append(prefix + txt[i:len(txt)].strip())
-            i += n
-        if firstTime and isHeader:
-            lines.append(prefix)
-        firstTime = False
-    return lines
-
-
 def extract_arg(line):
     arg = {}
     line = line.rstrip('\r\n')
@@ -447,7 +353,105 @@ def one_line_link(line):
     return single
 
 
-def convert_gopher(src, dst, arPath, arLast):
+def convert_gopher(src, dst, arPath, arLast, arBase):
+
+    def justify (txt, text_width):
+        missing = text_width - len(txt)
+        leading = 0
+        if missing == 0:
+            return txt
+        while txt[leading] == ' ':
+            txt = txt[1:]
+            leading += 1
+        words = txt.split()
+        blanks = re.findall(r'\s+', txt.strip())
+        nblanks = len(words) - 1
+        if nblanks != len(blanks):
+            error("INTERNAL Error mistmatch of spaces (nblanks:",nblanks,
+                    " len(blanks):",len(blanks),
+                    "\nwords:",words,"\nblanks:",blanks,"\nTXT:|",txt,"|")
+        if nblanks < 1:
+            warn("Line too long without a blank (",nblanks, ")=>[",words,"]")
+
+        while (missing >= nblanks) and (nblanks > 0):
+            for i in range(len(blanks)):
+                blanks[i] += ' '
+            missing -= nblanks
+
+        flags = [True] * (nblanks)
+
+        while (missing > 0) and (nblanks > 0):
+            i = random.randint(0,nblanks-1)
+            if flags[i]:
+                blanks[i] += ' '
+                flags[i] = False
+                missing -= 1
+
+        text = ''
+        if leading > 0:
+            text = ' ' * leading
+        for i in range(len(blanks)):
+            text += words[i] + blanks[i]
+        text += words[-1]
+        return text
+
+    def gopher_text(txt, prefix):
+        lines = []
+
+        # Process headings
+        isHeader = False
+        if Markdown_reader.re_head1.search(txt): ## Heading
+            txt = re.sub(r"^\s*#+\s",'',txt)
+            lines.append(prefix)
+            lines.append(prefix)
+            isHeader = True
+
+        if Markdown_reader.re_empty.search(txt): ## Empty line
+            lines.append(prefix)
+            return lines
+
+        txt_width = gopherLineLength # Magic gopher number
+        initial_ident = ''
+        subsequent_indent = ''
+
+        def check(match):
+            nonlocal txt, initial_ident 
+            if match:
+                initial_ident = txt[:match.span()[1] ]
+                txt           = txt[ match.span()[1]:]
+                return True
+            else:
+                return False
+
+        if   check(Markdown_reader.re_quote.search(txt)):  ## Blockquotes
+            txt_width -= 4           # Trim at the end
+            initial_ident = ' ' * 4  # Trim at the begining
+            subsequent_indent = ' ' * len(initial_ident) 
+        elif check(Markdown_reader.re_ulist.search(txt)):  ## Unordered lists
+            subsequent_indent = ' ' * len(initial_ident) 
+        elif check(Markdown_reader.re_olist.search(txt)):  ## Ordered lists
+            subsequent_indent = ' ' * len(initial_ident) 
+        elif check(Markdown_reader.re_ident1.search(txt)): ## Indented element
+            subsequent_indent = ' ' * len(initial_ident) 
+        elif check(Markdown_reader.re_ident2.search(txt)): ## Indented element
+            subsequent_indent = ' ' * len(initial_ident) 
+
+        assert len(initial_ident) == len(subsequent_indent)
+        
+        lines = textwrap.wrap(txt, width = txt_width - len(initial_ident))
+        last = len(lines) -1
+        for i in range(0, last+1):
+            if i == last:
+                lines[i] = prefix + (subsequent_indent if i > 0 else initial_ident) + lines[i]
+            elif i == 0:
+                lines[i] = prefix + initial_ident + justify(lines[i], txt_width)
+            else:
+                lines[i] = prefix + subsequent_indent + justify(lines[i], txt_width)
+
+        if isHeader and (last == 0):
+            lines.append(prefix)
+
+        return lines
 
     def item_type(uri, hint):
         item = hint
@@ -509,8 +513,7 @@ def convert_gopher(src, dst, arPath, arLast):
                 if lineItem == 'h':
                     uri = 'URL:' + uri
                 flDst.write(lineItem + '  [' + str(value) + '] ' + label + '\t'
-                        + uri + filler + lineEnd)
-
+                        + (arBase if uri[0] == '/' else '') + uri + filler + lineEnd)
 
         while True:
             line = flSrc.get_line(isFenced)
@@ -623,7 +626,7 @@ def convert_gopher(src, dst, arPath, arLast):
         error(e, " while processing files", src,"=>",dst)
 
 
-def convert_gemini(src, dst, arPath, arLast):
+def convert_gemini(src, dst, arPath, arLast, arBase):
 
     vbprint("CONVERT Gemini map:",src,"->",dst)
     replacePage = False
@@ -640,10 +643,12 @@ def convert_gemini(src, dst, arPath, arLast):
             for key, value in sorted(pageLinks.items(), key=lambda item: item[1]):
                 ref = key.split('](')
                 if ref[0][0] == '!':
-                    flDst.write('=> ' + urllib.parse.quote(ref[1][:-1],':/?=+&') 
+                    flDst.write('=> ' + (arBase if ref[1][0] == '/' else '')
+                            + urllib.parse.quote(ref[1][:-1],':/?=+&') 
                             + '  [' + str(value) + '] ' + ref[0][2:] + '\n')
                 else:
-                    flDst.write('=> ' + urllib.parse.quote(ref[1][:-1],':/?=+&')
+                    flDst.write('=> ' + (arBase if ref[1][0] == '/' else '')
+                            + urllib.parse.quote(ref[1][:-1],':/?=+&')
                             + '  [' + str(value) + '] ' + ref[0][1:] + '\n')
             flDst.write('\n')
 
@@ -704,7 +709,7 @@ def convert_gemini(src, dst, arPath, arLast):
         error(e, " while processing files", src,"=>",dst)
 
 
-def traverse_gemini(arGemini, arPath, arLast):
+def traverse_gemini(arGemini, arPath, arLast, arBase):
  
     count = 0
  
@@ -733,10 +738,10 @@ def traverse_gemini(arGemini, arPath, arLast):
                     folder = os.path.dirname(rootDir)
                     if folder == arPath:
                         convert_gemini(sourceName + "-old", os.path.join(rootDir, 
-                            base + ".gmi"), arPath, arLast)
+                            base + ".gmi"), arPath, arLast, arBase)
                     else:
                         convert_gemini(sourceName + "-old", os.path.join(folder, 
-                            base + ".gmi"), arPath, arLast)
+                            base + ".gmi"), arPath, arLast, arBase)
 
             except OSError as e:
                 error(e," while processing gemini file", filename)
@@ -744,7 +749,7 @@ def traverse_gemini(arGemini, arPath, arLast):
     print("Number of gemini capsule files", count)
 
 
-def traverse_gopher(arGopher, arPath, arLast):
+def traverse_gopher(arGopher, arPath, arLast, arBase):
  
     count = 0
  
@@ -764,7 +769,7 @@ def traverse_gopher(arGopher, arPath, arLast):
                 if filename.lower() == "gophermap.txt":
                     count += 1
                     convert_gopher(sourceName, os.path.join(rootDir, "gophermap"), 
-                            arPath, arLast)
+                            arPath, arLast, arBase)
 
             except OSError as e:
                 error(e," while processing gopher file", filename)
@@ -899,6 +904,8 @@ def arguments() :
     print("   -G, --gemini  <path>  Gemini output folder (default to public-gg/gemini)")
     print("   -e, --empty   <path>  Path of empty folder (default to layouts-gg)")
     print("   -l, --last    <path>  Path for last build folder (default to public-gg-sav)")
+    print("   -b, --base    <path>  Rebase all Gopher absolute links to <path>")
+    print("   -B, --Base    <path>  Rebase all Gemini absolute links to <path>")
     print("   -c, --config  <file>  Name of the hugo config file (default to config-gg.toml)")
     print("   -t, --type    <type>  type of output to be generated (default to all)")
     print("                         <type> can be:")
@@ -917,21 +924,22 @@ def main(argv):
    nargs = 0
 
    # arguments:
-   arConfig = "config-gg.toml"
-   arPath   = "public-gg"
-   arGopher = "public-gg" + os.sep + "gopher"
-   arGemini = "public-gg" + os.sep + "gemini"
-   arLast   = "public-gg-sav"
-   arEmpty  = "layouts-gg"
+   arConfig   = "config-gg.toml"
+   arPath     = "public-gg"
+   arGopher   = "public-gg" + os.sep + "gopher"
+   arGemini   = "public-gg" + os.sep + "gemini"
+   arLast     = "public-gg-sav"
+   arEmpty    = "layouts-gg"
+   arBaseGopher = arBaseGemini = ""
    typeGopher = False
    typeGemini = False
-   arNoHugo = False
-   arType = "all"
+   arNoHugo   = False
+   arType     = "all"
 
    try:
-       opts, args = getopt.getopt(argv,"he:p:l:c:g:G:vt:kn",
+       opts, args = getopt.getopt(argv,"he:p:l:c:g:G:vt:knb:",
                ["help","empty=","path=","last=","config=","gopher=",
-                   "gemini=","verbose","type=","keep","no-hugo"])
+                   "gemini=","verbose","type=","keep","no-hugo","base="])
    except getopt.GetoptError as e:
       error(e)
       arguments()
@@ -944,6 +952,10 @@ def main(argv):
          arLast = arg
       elif opt in ("-p", "--path"):
          arPath = arg
+      elif opt in ("-b", "--base"):
+         arBaseGopher = arg
+      elif opt in ("-B", "--Base"):
+         arBaseGemini = arg
       elif opt in ("-e", "--empty"):
          arEmpty = arg
       elif opt in ("-c", "--config"):
@@ -973,6 +985,10 @@ def main(argv):
       error("Invalid type ", arType)
       arguments()
 
+   if (not arGopher.startswith(arPath)) or (not arGemini.startswith(arPath)):
+      error("gopher or gemini folders must be under the path folder")
+      arguments()
+       
    print("Proceeding as follows:\n    Input folder: ",arPath)
    if arType in ("all", "gopher"):
        print("    Gopher folder:",arGopher)
@@ -985,9 +1001,9 @@ def main(argv):
    execHugo(arNoHugo, arPath, arConfig, arEmpty)
    traverse_site(arPath, arGopher, typeGopher, arGemini, typeGemini)
    if typeGopher:
-       traverse_gopher(arGopher, arPath, arLast)
+       traverse_gopher(arGopher, arPath, arLast, arBaseGopher)
    if typeGemini:
-       traverse_gemini(arGemini, arPath, arLast)
+       traverse_gemini(arGemini, arPath, arLast, arBaseGemini)
 
    #### For some unknown reason to me, sometimes hugo generates nested folders as follows:
    ####     public-gg/gemini/gemini/...

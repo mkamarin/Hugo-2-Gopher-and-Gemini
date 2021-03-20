@@ -29,8 +29,10 @@
 {{- end }}
 {{- end }}
 
-{{ if .Params.ggremoveextras }}
-{{ else }}
+{{ if not (.Params.ggignorelinks) }}
+[[[=> references <=]]]
+{{- end -}}
+{{ if not (.Params.ggremoveextras) }}
 {{ .Scratch.Set "type" "lists" }}
 {{ partial "extras.gemini.gmi" . }}
 {{ end }}

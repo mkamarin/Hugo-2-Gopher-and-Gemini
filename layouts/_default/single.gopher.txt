@@ -36,8 +36,10 @@ i
 i{{- . }}
 {{- end }}
 {{- end }}
-{{ if or .Params.ggremoveextras .Params.ggignorelinks }}
-{{ else }}
+{{ if not (.Params.ggignorelinks) }}
+[[[=> references <=]]]
+{{- end -}}
+{{ if not (.Params.ggremoveextras) }}
 {{ .Scratch.Set "type" "pages" }}
 {{ partial "extras.gopher.txt" . }}
 {{- end -}}

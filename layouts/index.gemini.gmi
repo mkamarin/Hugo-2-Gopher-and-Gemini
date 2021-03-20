@@ -27,6 +27,9 @@
 {{ .Site.Params.info }}
 
 {{ .RawContent }}
+{{ if not (.Params.ggignorelinks) }}
+[[[=> references <=]]]
+{{- end -}}
 {{ .Scratch.Set "type" "main" }}
 {{ partial "extras.gemini.gmi" . }}
 

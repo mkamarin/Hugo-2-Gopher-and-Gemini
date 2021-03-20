@@ -63,7 +63,6 @@
 {{- end }}
 {{- end }}
 
-[[[=> references <=]]]
 {{/********** RETURN HOME SECTION **********/}}
 {{ if in $.Site.Params.gemini.includeReturnHome ($.Scratch.Get "type") }}
 => /index.gmi  {{ $.Site.Params.returnHome }}

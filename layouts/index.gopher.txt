@@ -37,5 +37,8 @@ i
 i{{- . }}
 {{- end }}
 i
+{{ if not (.Params.ggignorelinks) }}
+[[[=> references <=]]]
+{{- end -}}
 {{ .Scratch.Set "type" "main" }}
 {{ partial "extras.gopher.txt" . }}

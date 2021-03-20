@@ -48,7 +48,6 @@ i
 {{ end }}
 {{ end }}
 {{ end }}
-i
 {{/********** SOCIAL MEDIA SECTION **********/}}
 {{ if in $.Site.Params.gopher.includeSocial ($.Scratch.Get "type") }}
 i{{ $.Site.Params.gopher.socialText }}
@@ -59,15 +58,11 @@ h{{ .name }}	URL:{{ .url | safeURL }}
 {{ end }}
 {{ end }}
 i
-[[[=> references <=]]]
-i
-i
 {{/********** RETURN HOME SECTION **********/}}
 {{ if in $.Site.Params.gopher.includeReturnHome ($.Scratch.Get "type") }}
 1{{ $.Site.Params.returnHome }}	/
 i
 {{ end }}
-i
 {{/********** AUTHOR AND COPYRIGHT SECTION **********/}}
 {{ if in $.Site.Params.gopher.includeAuthor ($.Scratch.Get "type") }}
 i{{ with .Site.Params.Author }} {{ . }} {{ end }}
