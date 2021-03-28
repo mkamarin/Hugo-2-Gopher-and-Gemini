@@ -73,6 +73,13 @@ Then, when you want to create content that should only be in Gopher and/or Gemin
 
 5. Now you can check the generated files. By default, the Gopher hole will be in `public-gg/gopher` and the Gemini capsule in `public-gg/gemini`. You may want to browse those directories using the [Gopher-and-Gemini-Walker](https://github.com/mkamarin/Gopher-and-Gemini-Walker) tool before deploying them to your hosting environment.
 
+## Fixup script
+The script `src/fixup.sh` is useful to post-process the generated Gopher hole or Gemini capsule before deployment. Although, `src/hugo2gg.py` implements the same functionality, in my workflow I have found it easier to use `src/fixup.sh`.
+
+This script is useful to re-base a Gemini capsule or Gopher hole. Meaning, changing all the absolute links (links that start with "/") to add a base directory.
+
+In addition, this script can add the correct host and port to a gophermap. Therefore, making each line in the gophermap comply with the four tabs expected by some Gopher servers.
+
 ## License
 GPLv3
 

@@ -330,11 +330,11 @@ def extract_links(line, pageLinks, ignoreLinks = False):
             error(" Invalid link '",src,"', line ",count,":",link);
         citeId = ' [' + str(pageLinks[link]) + ']' 
         if ref[0][0] == '!':
-            cite = ref[0][2:] + citeId if not ignoreLinks else ""
+            cite = ref[0][2:] + (citeId if not ignoreLinks else "")
         else:
-            cite = ref[0][1:] + citeId if not ignoreLinks else ""
+            cite = ref[0][1:] + (citeId if not ignoreLinks else "")
         line = line.replace(link,cite)
-    return line, pageLinks if not ignoreLinks else {}
+    return line, (pageLinks if not ignoreLinks else {})
 
 
 def one_line_link(line):
@@ -499,11 +499,14 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
         def print_references(prefix):
             if len(pageLinks) == 0:
                 if countOtherLinks  == 0:
-                    warn("No links in '",src,
-                            "', it should be better be a txt file (instead of a gophermap)")
+                    warn("No links in '",src,"' convert to '",dst,
+                            "', it should be a txt file (instead of a gophermap)")
                 return
-            flDst.write(prefix + '\t' + filler + lineEnd + prefix + 
-                    'References:\t' + filler + lineEnd)
+            if prefix == 'i':
+                flDst.write(prefix + '\t' + filler + lineEnd + prefix + 
+                        'References:\t' + filler + lineEnd)
+            else:
+                flDst.write(lineEnd + 'References:' + lineEnd)
             for key, value in sorted(pageLinks.items(), key=lambda item: item[1]):
                 ref = key.split('](')
                 hint = 'I' if ref[0][0] == '!' else 'h'
