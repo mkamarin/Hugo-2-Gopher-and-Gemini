@@ -32,9 +32,10 @@ For more information, see [Hugo docs](https://gohugo.io/themes/installing/). For
 ~$ git submodule update --remote --merge
 ```
 
-## Usage
-1. You need to copy the `config-gg.toml` file to the main folder of your hugo site and edit it to adjust it to your situation. Now you have two distinct config files, namely one for your main theme (`config.toml`) and one for this theme (`config-gg.toml`).
+## Short set of Steps
 
+1. You need to copy the `config-gg.toml` file to the main folder of your hugo site and edit it to adjust it to your situation. Now you have two distinct config files, namely one for your main theme (`config.toml`) and one for this theme (`config-gg.toml`).
+2. 
 You may want some pages to be treated different when generating them for Gopher or Gemini. In those cases, you can add to the page front matter some of the flags described in `Hugo-2-Gopher-and-Gemini/archetypes/default.md`. 
 
 2. If you plan to have content that is specific to Gopher and/or Gemini, you may want to use a naming convention for those posts. For example, you may name those posts `<name>-gg.md` and write them in a way that will look nice in Gopher and/or Gemini. In that case, you want to add the following line to your main `config.toml` file:
@@ -57,13 +58,15 @@ Then, when you want to create content that should only be in Gopher and/or Gemin
 
 4. The `public-gg` folder will have two sub-folders, one for the Gopher hole named `public-gg/gopher` and one for the Gemini capsule named `public-gg/gemini`. There are two ways you can generate the `public-gg` folder:
 
-   1- Execute `hugo2gg.py` located in this theme folder under `src`. In most cases, the default options will work fine. You can see all the options by executing `hugo2gg.py --help`. Based on the options, `hugo2gg.py` will execute hugo as the first step of the conversion. So, in most cases, you just want to execute it from the main folder of your hugo site as:
+   * Execute `hugo2gg.py` located in this theme folder under `src`. In most cases, the default options will work fine. You can see all the options by executing `hugo2gg.py --help`. Based on the options, `hugo2gg.py` will execute hugo as the first step of the conversion. So, in most cases, you just want to execute it from the main folder of your hugo site as:
 
 ```sh
 ~$ themes/Hugo-2-Gopher-and-Gemini/src/hugo2gg.py
 ```
 
-    2- If you want to execute hugo manually before executing `hugo2gg.py`, you can do as follows:
+
+    * If you want to execute hugo manually before executing `hugo2gg.py`, you can do as follows:
+
 
 ```sh
 ~$ hugo --config config-gg.toml --destination public-gg --layoutDir layouts-gg --disableKinds sitemap
@@ -72,6 +75,35 @@ Then, when you want to create content that should only be in Gopher and/or Gemin
 ```
 
 5. Now you can check the generated files. By default, the Gopher hole will be in `public-gg/gopher` and the Gemini capsule in `public-gg/gemini`. You may want to browse those directories using the [Gopher-and-Gemini-Walker](https://github.com/mkamarin/Gopher-and-Gemini-Walker) tool before deploying them to your hosting environment.
+
+## Usage
+
+```bash
+Usage:
+  hugo2gg.py  [flags]
+
+Flags:
+   -p, --path    <path>  Path of the site to be converted (default to public-gg)
+   -g, --gopher  <path>  Gopher output folder (default to public-gg/gopher)
+   -G, --gemini  <path>  Gemini output folder (default to public-gg/gemini)
+   -e, --empty   <path>  Path of empty folder (default to layouts-gg)
+   -l, --last    <path>  Path for last build folder (default to public-gg-sav)
+   -b, --base    <path>  Rebase all Gopher absolute links to <path>
+   -B, --Base    <path>  Rebase all Gemini absolute links to <path>
+   -c, --config  <file>  Name of the hugo config file (default to config-gg.toml)
+   -t, --type    <type>  type of output to be generated (default to all)
+                         <type> can be:
+                                all      Generate both gopher and gemini sites
+                                gopher   Generate only the gopher hole
+                                gemini   Generate only the gemini capsule
+   -k, --keep            Keep processed temporary files for debugging purposes
+   -m, --max-line <num>  Max lenght of gophermap lines (default 70 but some prefer 67)
+   -n, --no-hugo         Do not run  hugo. Remember to run hugo before
+   -h, --help            Prints this help
+   -v, --verbose         Produces verbose stdout output
+
+```
+
 
 ## Fixup script
 The script `src/fixup.sh` is useful to post-process the generated Gopher hole or Gemini capsule before deployment. Although, `src/hugo2gg.py` implements the same functionality, in my workflow I have found it easier to use `src/fixup.sh`.
