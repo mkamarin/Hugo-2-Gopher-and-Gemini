@@ -911,7 +911,7 @@ def arguments() :
     print("   -b, --base    <path>  Rebase all Gopher absolute links to <path>")
     print("   -B, --Base    <path>  Rebase all Gemini absolute links to <path>")
     print("   -c, --config  <file>  Name of the hugo config file (default to config-gg.toml)")
-    print("   -t, --type    <type>  type of output to be generated (default to all)")
+    print("   -t, --type    <type>  type of output to be generated (default to none)")
     print("                         <type> can be:")
     print("                                all      Generate both gopher and gemini sites")
     print("                                gopher   Generate only the gopher hole")
@@ -938,7 +938,7 @@ def main(argv):
    typeGopher = False
    typeGemini = False
    arNoHugo   = False
-   arType     = "all"
+   arType     = "none"
 
    try:
        opts, args = getopt.getopt(argv,"he:p:l:c:g:G:vt:knb:",
