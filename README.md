@@ -8,7 +8,8 @@ There are few use cases for this theme:
 * A person that wants to use Hugo to generate and maintain a Gemini capsule or Gopher hole.
 * A person that wants to migrate a current Hugo web site to a Gemini capsule or a Gopher hole.
 
-You may find the [Gopher-and-Gemini-Walker](https://github.com/mkamarin/Gopher-and-Gemini-Walker) tool useful to verify the generated Gopher hole and/or the Gemini capsule before deploying them.
+You may find my [basic step by step on how to use this tool](https://www.mkamarin.com/posts/xhugo2ggx/) useful to understand this page. 
+In addition you may find the [Gopher-and-Gemini-Walker](https://github.com/mkamarin/Gopher-and-Gemini-Walker) tool useful to verify the generated Gopher hole and/or the Gemini capsule before deploying them.
 
 ## Features
 - Menu
