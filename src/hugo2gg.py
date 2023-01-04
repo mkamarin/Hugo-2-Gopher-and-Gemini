@@ -155,6 +155,8 @@ class Markdown_reader:
                 good_first(line1) and good_second(line2))
 
     def get_line(this, isFenced):
+        # isFenced means that it inside a code block that start with three back tildes (``` code ```)
+        # and so it should be considered literal
         if not this.isValid:
             return ''
         try:
@@ -274,6 +276,39 @@ def clone_file(src, dst):
 
 
 def extract_arg(line):
+    # Extract the arguments from the first line of the file.
+    # This first line corresponds to the front matter of the original markdown in Hugo.
+    # These arguments include:outputs, ggKeepRaw, ggRemoveExtras, ggCopyPage, and ggIgnoreLinks
+    # 
+    #outputs: ["html", "rss", "gemini", "gopher"]
+    # Outputs is used to limit the generation of this page
+    # for example, if you want a page to be generated for gopher only
+    # you will use: 'outputs: ["gopher"]'
+    #
+    #ggKeepRaw: false
+    # Keep raw will just keep the raw page as it was writen. In other words,
+    # no convertion process will be done in the page. Useful if the page was
+    # writen specifically for Gopher or for Gemini and you use the corresponding 
+    # outputs (above)
+    #
+    #ggRemoveExtras: false
+    # Remove extras will not generate extras for this page. Extras are controlled
+    # in the config.gg.toml under [params.gopher] and [params.gemini]. Their names
+    # start with 'include'. They are Menu, Categories, Social, Return home, and
+    # Author. This is useful if you wants a specific page to be different.
+    #
+    #ggCopyPage: false
+    # Copy page will force hugo2gg.py to copy this page from the 'last' directory.
+    # This uses the 'hugo2gg.py --last' option (default to public-gg-sav).
+    # Useful when you manually modify a generated page and want to keep your
+    # changes. In that case you will copy your modified site to a directory, and
+    # execute hugo2gg.py with the correct --last option.
+    #
+    #ggIgnoreLinks: false
+    # Ignore links will ignore the links in the page. Links will not be generated
+    # for that page. Useful for pages where the links are not that important, and 
+    # you don't want to include them in Gopher or Gemini.
+
     arg = {}
     line = line.rstrip('\r\n')
     if line and (line[0:6] == '[[[=> ') and (line[-5:] == '<=]]]'):
@@ -283,9 +318,9 @@ def extract_arg(line):
     pairs = line.split(',')
     for pair in pairs:
         single = pair.split(':')
-        vbprint("Page arg:", single)
         if len(single) == 2:
             arg[single[0]] = True if single[1] == 'true' else False if single[1] == 'false' else single[1]
+    vbprint("Page args:",arg)
     return arg
 
 
@@ -316,6 +351,43 @@ def clean_markdown(line, add_LF = False):
         line = line.strip('\r\n ') + '\n'
     return line
 
+
+##  links in Hugo (extract_links & one_line_link)##
+## 
+## Common format is: [label](uri)
+##     Note that uri can have a title, and becomes [label](uri "title")
+##       in this case the title is in quotes and separated by a space, and it is ignored in the output
+##       Note that uri should not have blanks (they should have %20 instead)
+##       For example:
+##                  [my link](http://www.example.com)
+##                  [my link](http://www.example.com "a title for my link")
+##
+## Other options are:
+##
+## - email is <email> 
+##       For example: <fake@mail.com>
+##
+## - URL is <url> 
+##       For example: <http://www.examp[le.com>
+##
+## - HTML tag <a href="uri">label</a>
+##       For example: <a href="http://www.examp[le.com">my example</a>
+##
+## - Hugo shortcodes (https://gohugo.io/content-management/shortcodes/)
+##   Delimited by {{%  %}}  or by {{<  >}}
+##   Not all the shortcuts are supported. The supported subset is as follows:
+##       - instagram
+##         For example: {{< instagram BWNjjyYFxVx >}} 
+##             becomes https://www.instagram.com/p/BWNjjyYFxVx/
+##
+##       - tweet
+##         For example: {{< tweet user="SanDiegoZoo" id="1453110110599868418" >}}
+##             becomes https://twitter.com/SanDiegoZoo/status/1453110110599868418
+##
+##       - youtube
+##         For example: {{< youtube w7Ft2ymGmfc >}}
+##             becomes https://www.youtube.com/watch?v=w7Ft2ymGmfc
+##
 
 def extract_links(line, pageLinks, ignoreLinks = False):
     lineLinks = re.findall(r'!?\[[^\]]*\]\([^\)]*\)|<[^<]+[@:][^<]+>',line)
@@ -487,7 +559,7 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
     try:
         count = 0
         countOtherLinks = 0
-        isFenced = False
+        isFenced = False # Fencing means that it inside a clode block that start with three back tildes (``` code ```)
         pageLinks = {}
         lineEnd = '\r\n'
         arg = {}
@@ -523,7 +595,7 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
             if not line:
                 break
             if (count == 0) and not arg:
-                arg = extract_arg(line)
+                arg = extract_arg(line) # Extract the arguments from the first line of the file.
                 if arg or (len(line.strip('\r\n\t ')) == 0):
                     continue
             count += 1
@@ -537,7 +609,7 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
             if re.search(r"^i?\s*```",line): #toggle fenced code
                 isFenced  = not isFenced
                 continue
-            if isFenced:
+            if isFenced or ((len(line) > 4) and ((line[0:5] == 'i    ') or (line[0:2] == 'i\t'))):
                 linePart = line.split('\t')
                 if len(linePart[0]) > gopherLineLength:
                     warn("Fenced line too long (exceed ",gopherLineLength," chars by ",
@@ -680,7 +752,7 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
                 flDst.write(line.strip('\t\r\n ') + '\n')
                 isFenced  = not isFenced
                 continue
-            if isFenced:
+            if isFenced or ((len(line) > 3) and ((line[0:4] == '    ') or (line[0:1] == '\t'))):
                 flDst.write(clean_markdown(line, True))
                 continue
             # need to extract and replace links [text]()
