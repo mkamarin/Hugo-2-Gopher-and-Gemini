@@ -35,8 +35,10 @@ import datetime
 import mimetypes
 import subprocess
 
+## Global variables
 verbose = False
 keepTmpFiles = False
+fullGopherLine = False
 gopherLineLength = 70
 
 def vbprint(*args, **kwargs):
@@ -368,7 +370,7 @@ def clean_markdown(line, add_LF = False):
 ##       For example: <fake@mail.com>
 ##
 ## - URL is <url> 
-##       For example: <http://www.examp[le.com>
+##       For example: <http://www.example.com>
 ##
 ## - HTML tag <a href="uri">label</a>
 ##       For example: <a href="http://www.examp[le.com">my example</a>
@@ -624,6 +626,35 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
                 continue
             # Strict gopher: lines are composed of five parts:
             # item: one character describing the item type
+            #    it is one of the following: (see 'https://en.wikipedia.org/wiki/Gopher_(protocol)')
+            #    Canonical types
+            #    "0"  Text file
+            #    "1"  Gopher submenu
+            #    "2"  CCSO Nameserver
+            #    "3"  Error code returned by a Gopher server to indicate failure
+            #    "4"  BinHex-encoded file (primarily for Macintosh computers)
+            #    "5"  DOS file
+            #    "6"  uuencoded file
+            #    "7"  Gopher full-text search
+            #    "8"  Telnet
+            #    "9"  Binary file
+            #    "+"  Mirror or alternate server (for load balancing or in case of primary server downtime)
+            #    "g"  GIF file
+            #    "I"  Image file
+            #    "T"  Telnet 3270
+            #    Gopher+ types
+            #    ":"  Bitmap image
+            #    ";"  Movie file
+            #    "<"  Sound file
+            #    Non-canonical types
+            #    "d"  Doc. Seen used alongside PDF's and .DOC's
+            #    "h"  HTML file
+            #    "i"  Informational message, widely used. Just plain text to display
+            #    "p"  image file "(especially the png format)"
+            #    "r"  document rtf file "rich text Format")
+            #    "s"  Sound file (especially the WAV format)
+            #    "P"  document pdf file "Portable Document Format")
+            #    "X"  document xml file "eXtensive Markup Language")
             # text: user visible string or label
             # selector: often a path, uri or other file selector
             # domain: the domain name of the host containing the selector
@@ -636,35 +667,36 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
             nLineParts = len(linePart)
             if nLineParts == 4:
                 filler = ""
-            elif (nLineParts <= 2) and arg and arg['fullLine']:
+            elif (nLineParts <= 2) and (fullGopherLine  or (arg and arg['fullLine'])):
                 filler = '\t' + arg['host'] + '\t' + arg['port']
-            elif nLineParts > 4:
+            elif nLineParts >= 3:
                 error(" Extra tabs in '",src,"', line ",flSrc.get_count(),":",linePart);
 
             if line.strip() == '[[[=> references <=]]]':
-                print_references('i' if arg and (arg['textChar'] or arg['fullLine']) else '')
+                print_references('i' if (fullGopherLine  or (arg and (arg['textChar'] or arg['fullLine']))) else '')
                 continue
 
             # need to extract and replace links [text](link)
             # Links alone in a single line shoul be placed in the same line
-            single = one_line_link(line)
-            if single:
-                if arg and arg['ignoreLinks']:
-                    flDst.write(single['label'] + lineEnd)
-                else:
-                    flDst.write(item_type(single['uri'], single['hint']) + '  ' + 
-                            single['label'] + '\t' + single['uri'] + filler + lineEnd)
-                continue
+            if line[0] == 'i':
+                single = one_line_link(line)
+                if single:
+                    if arg and arg['ignoreLinks']:
+                        flDst.write(single['label'] + lineEnd)
+                    else:
+                        flDst.write(item_type(single['uri'], single['hint']) + '  ' + 
+                                single['label'] + '\t' + single['uri'] + filler + lineEnd)
+                    continue
 
-            # Links embeded in the text of the line must be collected for late placement
-            linePart[0], pageLinks = extract_links(linePart[0], pageLinks, arg and arg['ignoreLinks'])
+                # Links embeded in the text of the line must be collected for late placement
+                linePart[0], pageLinks = extract_links(linePart[0], pageLinks, arg and arg['ignoreLinks'])
 
             linePart[0] = clean_markdown(linePart[0])
             if linePart[0][0] in ['0','1','4','5','6','9','g','I','h','s']:
                 countOtherLinks += 1
             if linePart[0][0] == 'i': ### Text line
                 lines = gopher_text(linePart[0][1:], 
-                        'i' if arg and (arg['textChar'] or arg['fullLine']) else '')
+                        'i' if fullGopherLine or (arg and (arg['textChar'] or arg['fullLine'])) else '')
                 for l in lines:
                     if nLineParts > 3:
                         lne = l + '\t' + linePart[1] + '\t' + linePart[2] + '\t' + linePart[3]
@@ -990,6 +1022,8 @@ def arguments() :
     print("                                gemini   Generate only the gemini capsule")
     print("   -k, --keep            Keep processed temporary files for debugging purposes")
     print("   -m, --max-line <num>  Max lenght of gophermap lines (default 70 but some prefer 67)")
+    print("   -f, --full-line       Forces each line in the gophermap to be fully compliant")
+    print("                         (overrides fullLine and textChar in config-gg.toml)")
     print("   -n, --no-hugo         Do not run  hugo. Remember to run hugo before")
     print("   -h, --help            Prints this help")
     print("   -v, --verbose         Produces verbose stdout output")
@@ -1013,8 +1047,8 @@ def main(argv):
    arType     = "none"
 
    try:
-       opts, args = getopt.getopt(argv,"he:p:l:c:g:G:vt:knb:",
-               ["help","empty=","path=","last=","config=","gopher=",
+       opts, args = getopt.getopt(argv,"hfe:p:l:c:g:G:vt:knb:",
+               ["help","empty=","path=","last=","config=","gopher=","full-line",
                    "gemini=","verbose","type=","keep","no-hugo","base="])
    except getopt.GetoptError as e:
       error(e)
@@ -1053,6 +1087,9 @@ def main(argv):
       elif opt in ("-k", "--keep"):
           global keepTmpFiles
           keepTmpFiles = True
+      elif opt in ("-f", "--full-line"):
+          global fullGopherLine
+          fullGopherLine = True
       elif opt == "": 
           error("Invalid argument")
           arguments()

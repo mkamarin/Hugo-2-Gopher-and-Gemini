@@ -99,6 +99,8 @@ Flags:
                                 gemini   Generate only the gemini capsule
    -k, --keep            Keep processed temporary files for debugging purposes
    -m, --max-line <num>  Max lenght of gophermap lines (default 70 but some prefer 67)
+   -f, --full-line       Forces each line in the gophermap to be fully compliant
+                         (overrides fullLine and textChar in config-gg.toml)
    -n, --no-hugo         Do not run  hugo. Remember to run hugo before
    -h, --help            Prints this help
    -v, --verbose         Produces verbose stdout output
