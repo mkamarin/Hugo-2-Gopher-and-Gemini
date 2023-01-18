@@ -341,14 +341,14 @@ def clean_markdown(line, add_LF = False):
         while (new[0] == '_') and (new[-1] == '_'):
             new = new[1:-1]
         line = line.replace(item, new)
-    # strip code enclosed in one backticks (`)
-    emphasis = re.findall(r"[^`]`[^`]+`[^`]",line)
-    for item in emphasis:
-        line = line.replace(item, item[1:-1])
     # strip code enclosed in two backticks (``)
-    emphasis = re.findall(r"``.+``",line) # Will not work in all cases
+    emphasis = re.findall(r"(?<!`)``[^`]+``",line)
     for item in emphasis:
         line = line.replace(item, item[2:-2])
+    # strip code enclosed in one backticks (`)
+    emphasis = re.findall(r"(?<!`)`[^`]+`",line)
+    for item in emphasis:
+        line = line.replace(item, item[1:-1])
     if add_LF:
         line = line.strip('\r\n ') + '\n'
     return line
@@ -390,6 +390,7 @@ def clean_markdown(line, add_LF = False):
 ##         For example: {{< youtube w7Ft2ymGmfc >}}
 ##             becomes https://www.youtube.com/watch?v=w7Ft2ymGmfc
 ##
+######### CHECK http://www.rexegg.com/regex-uses.html
 
 def extract_links(line, pageLinks, ignoreLinks = False):
     lineLinks = re.findall(r'!?\[[^\]]*\]\([^\)]*\)|<[^<]+[@:][^<]+>',line)
@@ -413,7 +414,8 @@ def extract_links(line, pageLinks, ignoreLinks = False):
 
 def one_line_link(line):
     single = {}
-    if re.search(r'^i?\s*!?\[[^\]]*\]\([^\)]*\)\s*$|^i?\s*<[^<]+[@:][^<]+>\s*$',line):
+    ##if re.search(r'^i?\s*!?\[[^\]]*\]\([^\)]*\)\s*$|^i?\s*<[^<]+[@:][^<]+>\s*$',line):
+    if re.search(r'^\s*!?\[[^\]]*\]\([^\)]*\)\s*$|^i?\s*<[^<]+[@:][^<]+>\s*$',line):
         single['hint'] = 'I' if re.search(r'^i?\s*!\[',line) else 'h'
         link = line[1:].strip(' <![)>\t') if line[0] == 'i' else line.strip(' <![)>\t')
         link = re.sub(r'\s+"[^"]+"\s*\)',')',link)
@@ -584,7 +586,7 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
             for key, value in sorted(pageLinks.items(), key=lambda item: item[1]):
                 ref = key.split('](')
                 hint = 'I' if ref[0][0] == '!' else 'h'
-                label = ref[0][2:] if ref[0][0] == '!' else ref[0][1:]
+                label = clean_markdown(ref[0][2:] if ref[0][0] == '!' else ref[0][1:])
                 uri = ref[1][:-1]
                 lineItem = item_type(uri, hint)
                 if lineItem == 'h':
@@ -749,14 +751,15 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
             flDst.write('\nReferences:\n')
             for key, value in sorted(pageLinks.items(), key=lambda item: item[1]):
                 ref = key.split('](')
+                label = clean_markdown(ref[0][2:])
                 if ref[0][0] == '!':
                     flDst.write('=> ' + (arBase if ref[1][0] == '/' else '')
                             + urllib.parse.quote(ref[1][:-1],':/?=+&') 
-                            + '  [' + str(value) + '] ' + ref[0][2:] + '\n')
+                            + '  [' + str(value) + '] ' + label + '\n')
                 else:
                     flDst.write('=> ' + (arBase if ref[1][0] == '/' else '')
                             + urllib.parse.quote(ref[1][:-1],':/?=+&')
-                            + '  [' + str(value) + '] ' + ref[0][1:] + '\n')
+                            + '  [' + str(value) + '] ' + label + '\n')
             flDst.write('\n')
 
         flSrc = Markdown_reader(src, False)
