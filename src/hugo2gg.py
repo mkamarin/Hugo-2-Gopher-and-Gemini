@@ -326,6 +326,54 @@ def extract_arg(line):
     return arg
 
 
+def clean_html_tags(line):
+    # Process html tags and either remove them or convert them to links
+    def process_html_tags(line,tags):
+        if len(tags) == 2:
+            all = line[line.find(tags[0]) : line.find(tags[1])+len(tags[1])]
+            txt = line[line.find(tags[0])+len(tags[0]):line.find(tags[1])]
+            if tags[1] == "</a>":
+                link = re.search(r'".*?"',tags[0]).group()
+                if link:
+                    txt = '[' + txt + '](' + link[1:-1] + ')' 
+            return line.replace(all,txt)
+        indexes = []
+        last_tag = ""
+        last_name = "."
+        last_index = -1
+        for i,t in enumerate(tags):
+            n = re.search(r'\/?\w+',t).group()
+            if n[0] == '/' and last_name == n[1:]:
+                nLine = process_html_tags(line,[last_tag,t])
+                return  process_html_tags(nLine,tags[:last_index] + tags[i+1:])
+            last_tag = t
+            last_name = n
+            last_index = i
+        # Note that are cases when not all the tags are in a line, and they are skip
+        # in other words if the number of tags are odd then we will only process the pairs in the line
+        return line
+
+    tags = re.findall(r'<\/\w*>|<.+?>',line) # Find all the html tags in the line
+    if tags:
+        return process_html_tags(line,tags)
+    return line
+
+
+def clean_hugo_shortcuts(line):
+    # Hugo is not able to process shorcuts for text output (which is unfortunate)
+    # So, we need to do thius hack in here
+    scs = re.findall(r'{{% .*? %}}|{{< .*? >}}',line)
+    for s in scs:
+        pieces = s.split()
+        if (len(pieces) > 3):
+            shortcut = pieces[1].lower()
+            if shortcut == "youtube":
+                line = line.replace(s, '[youtube ' + pieces[2] + '](https://www.youtube.com/watch?v=' + pieces[2] + ')')
+            elif shortcut == "instagram":
+                line = line.replace(s,'[instagram ' + pieces[2] + '](https://www.instagram.com/p/' + pieces[2] + '/)')
+    return line
+
+
 def clean_markdown(line, add_LF = False):
     # strip bold and italic enclosed in asterisk (*)
     emphasis = re.findall(r'\*+[^\*]+\*+',line)
@@ -341,8 +389,12 @@ def clean_markdown(line, add_LF = False):
         while (new[0] == '_') and (new[-1] == '_'):
             new = new[1:-1]
         line = line.replace(item, new)
+    # strip code enclosed in three backticks (```)
+    emphasis = re.findall(r"(?<!`)```.*?```",line)
+    for item in emphasis:
+        line = line.replace(item, item[2:-2])
     # strip code enclosed in two backticks (``)
-    emphasis = re.findall(r"(?<!`)``[^`]+``",line)
+    emphasis = re.findall(r"(?<!`)``.*?``",line)
     for item in emphasis:
         line = line.replace(item, item[2:-2])
     # strip code enclosed in one backticks (`)
@@ -350,7 +402,7 @@ def clean_markdown(line, add_LF = False):
     for item in emphasis:
         line = line.replace(item, item[1:-1])
     if add_LF:
-        line = line.strip('\r\n ') + '\n'
+        line = line.rstrip('\r\n ') + '\n'
     return line
 
 
@@ -678,10 +730,13 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
                 print_references('i' if (fullGopherLine  or (arg and (arg['textChar'] or arg['fullLine']))) else '')
                 continue
 
+            # need to  clean up stuff
+            linePart[0] = clean_html_tags(linePart[0])
+            linePart[0] = clean_hugo_shortcuts(linePart[0])
             # need to extract and replace links [text](link)
             # Links alone in a single line shoul be placed in the same line
-            if line[0] == 'i':
-                single = one_line_link(line)
+            if linePart[0][0] == 'i':
+                single = one_line_link(linePart[0])
                 if single:
                     if arg and arg['ignoreLinks']:
                         flDst.write(single['label'] + lineEnd)
@@ -788,8 +843,12 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
                 isFenced  = not isFenced
                 continue
             if isFenced or ((len(line) > 3) and ((line[0:4] == '    ') or (line[0:1] == '\t'))):
-                flDst.write(clean_markdown(line, True))
+                flDst.write(line.rstrip('\r\n ') + '\n')
                 continue
+
+            # need to  clean up stuff
+            line = clean_html_tags(line)
+            line = clean_hugo_shortcuts(line)
             # need to extract and replace links [text]()
             # Links alone in a single line shoul be placed in the same line
             single = one_line_link(line.strip('\r\n'))
