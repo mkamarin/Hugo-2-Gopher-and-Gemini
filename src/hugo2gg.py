@@ -718,6 +718,8 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
             #
             line = line.replace('gophermap.txt','gophermap')
             linePart = line.split('\t')
+            if (len(linePart) == 2) and (linePart[1] == '') and (linePart[0][0] == '1'): ## We have something wrong in here
+                linePart[1] = '/'  ## Force it to the begining the alternative is to ignore the line
             nLineParts = len(linePart)
             if nLineParts == 4:
                 filler = ""
@@ -847,6 +849,11 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
                 continue
 
             # need to  clean up stuff
+            #print(":LINE:",line,":",line[0:2],":",sep='')
+            if line[0:3] == '=> ':
+                line = line.replace("/.gmi",".gmi")
+                if line.find("=> .gmi") == 0:
+                    line = "BAD LINE[" + line + "]"
             line = clean_html_tags(line)
             line = clean_hugo_shortcuts(line)
             # need to extract and replace links [text]()
