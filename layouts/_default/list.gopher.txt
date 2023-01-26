@@ -29,7 +29,7 @@ i{{- . }}
 i
 {{ range .Paginator.Pages }}
 {{- if .OutputFormats.Get "gopher" }}
-1{{ .Date.Format (.Site.Params.dateFormat | default "January 2, 2006" ) }} {{ .Title }}	/{{ replace .File.Path ".md" "" }}
+1{{ .Date.Format (.Site.Params.dateFormat | default "January 2, 2006" ) }} {{ .Title }}	{{ replace .RelPermalink "/gopher/gophermap" "" }}
 {{ end }}
 {{ end }}
 i

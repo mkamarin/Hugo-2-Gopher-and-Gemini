@@ -40,6 +40,7 @@ verbose = False
 keepTmpFiles = False
 fullGopherLine = False
 gopherLineLength = 70
+maxEmptyLines = 1
 
 def vbprint(*args, **kwargs):
     if verbose:
@@ -483,6 +484,121 @@ def one_line_link(line):
 
 def convert_gopher(src, dst, arPath, arLast, arBase):
 
+    ###############################################################################
+    #### I don’t know the origin of this document (but I did not created)      ####
+    #### I  changed two things:                                                ####
+    ####    1-  all tabs to <T> (so they will be visible)                      ####
+    ####    2- added 4 blanks and #### at the beginning of each line           ####
+    ###############################################################################
+    #### i                                                             	<T>/
+    #### i      _____             _                 __  __             	<T>/
+    #### i     / ____|           | |               |  \/  |            	<T>/
+    #### i    | |  __  ___  _ __ | |__   ___ _ __  | \  / | __ _ _ __  	<T>/
+    #### i    | | |_ |/ _ \| '_ \| '_ \ / _ \ '__| | |\/| |/ _` | '_ \ 	<T>/
+    #### i    | |__| | (_) | |_) | | | |  __/ |    | |  | | (_| | |_) |	<T>/
+    #### i     \_____|\___/| .__/|_| |_|\___|_|    |_|  |_|\__,_| .__/ 	<T>/
+    #### i                 | |                                  | |    	<T>/
+    #### i                 |_|                                  |_|    	<T>/
+    #### i                                                             	<T>/
+    #### 
+    #### A Gopher server exposes a directory structure to the network using
+    #### the gopher protocol (RFC 1436).  In that respect, it is similar to
+    #### FTP  (RFC 959).  The main  difference is that  Gopher  looks for a
+    #### ‘gophermap’  file in a  directory.  If that file is present,  then
+    #### Gopher will use that  file as a menu for  the directory, otherwise
+    #### it will  just list the files  and  directories in  that directory.
+    #### Therefore a ‘gophermap’  is just a text file that serves as a menu
+    #### for a directory, but can also provide links to other resources.
+    #### 
+    #### A Gopher map has a very simple structure. Each line can have up to
+    #### four fields separated by horizontal tabs  (ASCII decimal 09 or hex
+    #### x09 or ‘\t’). With one exception, the first character of the first
+    #### field indicates the type of line. Therefore, a line looks like:
+    #### i	<T>/
+    #### i    Label <TAB> selector <TAB> host <TAB> port	<T>/
+    #### 
+    #### Where,
+    #### 
+    #### i    - Label should be human readable text.	<T>/
+    #### i      The first character of the label is the line item type.	<T>/
+    #### i    - selector is what the line is pointing to. 	<T>/
+    #### i      The selector can be a file, a directory, etc.	<T>/
+    #### i    - host refers to the host were the selector resides	<T>/
+    #### i    - port is the port used Gopher in that host	<T>/
+    #### 
+    #### The most common item types are:
+    #### 
+    #### i    '0’ for a file (normally text files)	<T>/
+    #### i    '1’ for a directory	<T>/
+    #### i    '9’ for binary files (for example, pdf, zip, etc.)	<T>/
+    #### i    'g’ for GIF graphic files	<T>/
+    #### i    'I’ for other image files (like jpg, png, etc.)	<T>/
+    #### i    'h’ for HTML files. 	<T>/
+    #### i    'i’ for informational messages.	<T>/
+    #### i    's’ for sound files (like wav, etc.)	<T>/
+    #### 
+    ####   If the selector is located in the host containing the gophermap,
+    #### then the host and port can be omitted.  Which is a  good practice,
+    #### because  then you can move the directory  structure to a different
+    #### host without changing any gophermaps.
+    #### 
+    #### A file or directory  selector that starts with ‘/’ is  relative to
+    #### the main directory  in  the  gopher site.  Otherwise,  the file or
+    #### directory is located in the same directory than the gophermap.
+    #### 
+    #### Lines with no tab:
+    #### 1) Lines without any horizontal tabs are considered text and should
+    ####    be displayed as such by Gopher clients.
+    #### 
+    #### Lines with a single tab:
+    #### 1) Lines staring with item type  ‘i’  should have a selector (so it
+    ####    will have one  <TAB>).  It  is  common  to  use  ‘/’  for such a
+    ####    selector.  It is  also common to omit  the host and port fields.
+    ####    Therefore only one tab is present on these lines.
+    #### 
+    #### An example of these type of lines is  the banner at the top of this
+    #### document, that uses the ‘i’ item type and ‘/’ as the selector. That
+    #### forces the gopher client to show the line exactly as it was created.
+    #### 
+    #### 2) All other item types  can have the label and the selector fields
+    ####    only if they reside in the same  host as the gophermap.  In this
+    ####    case the host and port fields are optional.
+    #### 
+    #### Few examples are:
+    #### 0A text file (relative to this gopgermap)	<T>stuff/text.txt
+    #### 9A pdf file (relative to the gopher site)	<T>/stuff/a-file.pdf
+    #### Ian image file	<T>stuff/image.jpg
+    #### 1The stuff directory (relative to this gopgermap)	<T>stuff
+    #### 1The stuff directory (relative to the gopher site)	<T>/stuff
+    #### 
+    #### Lines with three tabs:
+    #### 1) Lines with a  selector that  resides in a  different host.  Must
+    ####    have the host and port fields. Therefore the URL for those lines
+    ####    becomes:  “gopher://<host>:<port><selector>”.  Note that in this
+    ####    case, the selector must start with a  ‘/’ and be relative to the
+    ####    hosting gopher site.
+    #### 
+    #### Few examples:
+    #### 1The base directory of the SDF gopher site	<T>/	<T>sdf.org	<T>70
+    #### 1The Floodgap gopher site	<T>/	<T>gopher.floodgap.com	<T>70
+    #### 
+    #### The exception are lines with item type of ‘h’. The selector in those
+    #### lines can start with “URL:” followed by a scheme (e.g. “URL:http://”,
+    #### or “URL:ftp://”, “URL:gopher://”, “URL:gemini//”, etc.). Note that in
+    #### this case the host and port fields are optional.
+    #### 
+    #### Few example:
+    #### hThe SDF web site	<T>URL:http://sdf.org/
+    #### hThe Floodgap web site	<T>URL:https://www.floodgap.com/
+    #### hOur sister toycapsule	<T>URL:gemini://myserver/
+    #### 
+    #### This is basically all what you need to know to create gophermaps. It is
+    #### in good manners to keep most posts in a phlog as text files  (with .txt
+    #### extension), and use gophermaps to point to the posts. Or in some cases,
+    #### just write text  files in a suitable  directory structure and leave the
+    #### gopher server navigate the directory structure. 
+    ###############################################################################
+
     def justify (txt, text_width):
         missing = text_width - len(txt)
         leading = 0
@@ -683,7 +799,7 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
             #    it is one of the following: (see 'https://en.wikipedia.org/wiki/Gopher_(protocol)')
             #    Canonical types
             #    "0"  Text file
-            #    "1"  Gopher submenu
+            #    "1"  Gopher directory (may contain a gophermap)
             #    "2"  CCSO Nameserver
             #    "3"  Error code returned by a Gopher server to indicate failure
             #    "4"  BinHex-encoded file (primarily for Macintosh computers)
@@ -711,10 +827,10 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
             #    "X"  document xml file "eXtensive Markup Language")
             # text: user visible string or label
             # selector: often a path, uri or other file selector
-            # domain: the domain name of the host containing the selector
-            # port: the port used by the domain
+            # host: the domain name of the host containing the selector
+            # port: the port used by the host
             #
-            #line is: <item><text>[<TAB><selector>[<TAB><domain>[<TAB><port>]]]<CR><LF>
+            #line is: <item><text>[<TAB><selector>[<TAB><host>[<TAB><port>]]]<CR><LF>
             #
             line = line.replace('gophermap.txt','gophermap')
             linePart = line.split('\t')
@@ -808,7 +924,7 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
             flDst.write('\nReferences:\n')
             for key, value in sorted(pageLinks.items(), key=lambda item: item[1]):
                 ref = key.split('](')
-                label = clean_markdown(ref[0][2:])
+                label = clean_markdown(ref[0][1:])
                 if ref[0][0] == '!':
                     flDst.write('=> ' + (arBase if ref[1][0] == '/' else '')
                             + urllib.parse.quote(ref[1][:-1],':/?=+&') 
@@ -849,18 +965,26 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
                 continue
 
             # need to  clean up stuff
-            #print(":LINE:",line,":",line[0:2],":",sep='')
-            if line[0:3] == '=> ':
+            #print(":LINE:[",line,"]",sep='')
+            if line[0:2] == '=>':
+                #print("## 1 ##:",line)
+                if re.search(r'=>\s*\/gemini\/',line):
+                    line = line.replace("/gemini/","/")
+                if re.search(r'\/gemini-page\.gmi\s+',line):
+                    line = line.replace("/gemini-page.gmi",".gmi")
                 line = line.replace("/.gmi",".gmi")
                 if line.find("=> .gmi") == 0:
                     line = "BAD LINE[" + line + "]"
+                #print("## 2:",line)
             line = clean_html_tags(line)
             line = clean_hugo_shortcuts(line)
+            #print("## 3:",line)
             # need to extract and replace links [text]()
             # Links alone in a single line shoul be placed in the same line
             single = one_line_link(line.strip('\r\n'))
             if single:
                 #flDst.write('=> ' + single['uri'] + '   ' + single['label'] + '\n')
+                #print('OUT1:[=> ' + urllib.parse.quote(single['uri'],':/?=+&') + '   ' + single['label'] + ']',sep='')
                 flDst.write('=> ' + urllib.parse.quote(single['uri'],':/?=+&') 
                         + '   ' + single['label'] + '\n')
                 continue
@@ -872,7 +996,11 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
                 print_references()
                 continue
 
-            flDst.write(clean_markdown(line, True))
+            if len(line) > 2 and line[0:2] == '=>':
+                flDst.write(line)
+            else:
+                #print("OUT2:[",clean_markdown(line, True),"]",sep='')
+                flDst.write(clean_markdown(line, True))
 
         flSrc.destroy()
         flDst.close()
@@ -908,7 +1036,7 @@ def traverse_gemini(arGemini, arPath, arLast, arBase):
                 if ext.lower() == ".gmi":
                     count += 1
                     base = os.path.basename(rootDir)
-                    if (base.lower() == "gemini") or not base:
+                    if ((base.lower() == "gemini") and (rootDir == arGemini)) or not base:
                         base = "index"
                     os.rename(sourceName, sourceName + "-old")
                     folder = os.path.dirname(rootDir)
@@ -1076,26 +1204,27 @@ def execHugo(arNoHugo, arPath, arConfig, arEmpty):
 
 def arguments() :
     print("Usage:\n ",os.path.basename(sys.argv[0])," [flags]\n\nFlags:")
-    print("   -p, --path    <path>  Path of the site to be converted (default to public-gg)")
-    print("   -g, --gopher  <path>  Gopher output folder (default to public-gg/gopher)")
-    print("   -G, --gemini  <path>  Gemini output folder (default to public-gg/gemini)")
-    print("   -e, --empty   <path>  Path of empty folder (default to layouts-gg)")
-    print("   -l, --last    <path>  Path for last build folder (default to public-gg-sav)")
-    print("   -b, --base    <path>  Rebase all Gopher absolute links to <path>")
-    print("   -B, --Base    <path>  Rebase all Gemini absolute links to <path>")
-    print("   -c, --config  <file>  Name of the hugo config file (default to config-gg.toml)")
-    print("   -t, --type    <type>  type of output to be generated (default to none)")
-    print("                         <type> can be:")
-    print("                                all      Generate both gopher and gemini sites")
-    print("                                gopher   Generate only the gopher hole")
-    print("                                gemini   Generate only the gemini capsule")
-    print("   -k, --keep            Keep processed temporary files for debugging purposes")
-    print("   -m, --max-line <num>  Max lenght of gophermap lines (default 70 but some prefer 67)")
-    print("   -f, --full-line       Forces each line in the gophermap to be fully compliant")
-    print("                         (overrides fullLine and textChar in config-gg.toml)")
-    print("   -n, --no-hugo         Do not run  hugo. Remember to run hugo before")
-    print("   -h, --help            Prints this help")
-    print("   -v, --verbose         Produces verbose stdout output")
+    print("   -p, --path    <path>    Path of the site to be converted (default to public-gg)")
+    print("   -g, --gopher  <path>    Gopher output folder (default to public-gg/gopher)")
+    print("   -G, --gemini  <path>    Gemini output folder (default to public-gg/gemini)")
+    print("   -e, --empty   <path>    Path of empty folder (default to layouts-gg)")
+    print("   -l, --last    <path>    Path for last build folder (default to public-gg-sav)")
+    print("   -b, --base    <path>    Rebase all Gopher absolute links to <path>")
+    print("   -B, --Base    <path>    Rebase all Gemini absolute links to <path>")
+    print("   -c, --config  <file>    Name of the hugo config file (default to config-gg.toml)")
+    print("   -t, --type    <type>    type of output to be generated (default to none)")
+    print("                           <type> can be:")
+    print("                                  all      Generate both gopher and gemini sites")
+    print("                                  gopher   Generate only the gopher hole")
+    print("                                  gemini   Generate only the gemini capsule")
+    print("   -k, --keep              Keep processed temporary files for debugging purposes")
+    print("   -m, --max-line <num>    Max lenght of gophermap lines (default 70 but some prefer 67)")
+    print("   -f, --full-line         Forces each line in the gophermap to be fully compliant")
+    print("                           (overrides fullLine and textChar in config-gg.toml)")
+    print("   -n, --no-hugo           Do not run  hugo. Remember to run hugo before")
+    print("   -w, --white-lines <num> Indicate the max number of empty lines (default 1)")
+    print("   -h, --help              Prints this help")
+    print("   -v, --verbose           Produces verbose stdout output")
     sys.exit(2)
 
 
@@ -1116,8 +1245,9 @@ def main(argv):
    arType     = "none"
 
    try:
-       opts, args = getopt.getopt(argv,"hfe:p:l:c:g:G:vt:knb:",
-               ["help","empty=","path=","last=","config=","gopher=","full-line",
+       opts, args = getopt.getopt(argv,"hfe:p:l:c:g:G:vt:knb:w:",
+               ["help","empty=","path=","last=","config=","gopher=",
+                   "full-line","white-lines=",
                    "gemini=","verbose","type=","keep","no-hugo","base="])
    except getopt.GetoptError as e:
       error(e)
@@ -1145,6 +1275,9 @@ def main(argv):
          arGemini = clean_dir(arg)
       elif opt in ("-t", "--type"):
           arType = arg
+      elif opt in ("-w", "--white-lines"):
+          global maxEmptyLines 
+          maxEmptyLines = int(arg)
       elif opt in ("-v", "--verbose"):
           global verbose
           verbose = True

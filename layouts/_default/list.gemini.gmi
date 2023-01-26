@@ -21,14 +21,12 @@
 */}}
 [[[=> page:list,copyPage: {{- .Params.ggcopypage -}},keepRaw: {{- .Params.ggkeepraw -}},removeExtras: {{- .Params.ggremoveExtras -}},ignoreLinks: {{- .Params.ggignorelinks -}} <=]]]
 # {{ .Title }}
-
 {{ .RawContent }}
 {{- range .Pages.ByPublishDate.Reverse }}
 {{- if .OutputFormats.Get "gemini" }}
-=> /{{ replace .File.Path ".md" ".gmi" }} {{ .Date.Format (.Site.Params.dateFormat | default "January 2, 2006" ) }} {{ .Title }}
+=> {{ replace .RelPermalink "/gemini/gemini-page" "" }} {{ .Date.Format (.Site.Params.dateFormat | default "January 2, 2006" ) }} {{ .Title }}
 {{- end }}
 {{- end }}
-
 {{ if not (.Params.ggignorelinks) }}
 [[[=> references <=]]]
 {{- end -}}

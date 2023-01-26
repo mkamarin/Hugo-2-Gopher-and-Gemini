@@ -24,7 +24,6 @@
 {{ .RawContent -}}
 {{ else }}
 # {{ .Title }}
-
 {{ .RawContent -}}
 {{- end }}
 {{ if not (.Params.ggignorelinks) }}
