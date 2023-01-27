@@ -41,6 +41,7 @@ keepTmpFiles = False
 fullGopherLine = False
 gopherLineLength = 70
 maxEmptyLines = 1
+mapLinkLabels = {}
 
 def vbprint(*args, **kwargs):
     if verbose:
@@ -369,9 +370,9 @@ def clean_hugo_shortcuts(line):
         if (len(pieces) > 3):
             shortcut = pieces[1].lower()
             if shortcut == "youtube":
-                line = line.replace(s, '[youtube ' + pieces[2] + '](https://www.youtube.com/watch?v=' + pieces[2] + ')')
+                line = line.replace(s, '[' + mapLinkLabels.get(pieces[2],'youtube ' + pieces[2]) + '](https://www.youtube.com/watch?v=' + pieces[2] + ')')
             elif shortcut == "instagram":
-                line = line.replace(s,'[instagram ' + pieces[2] + '](https://www.instagram.com/p/' + pieces[2] + '/)')
+                line = line.replace(s,'[' + mapLinkLabels.get(pieces[2],'instagram ' + pieces[2]) + '](https://www.instagram.com/p/' + pieces[2] + '/)')
     return line
 
 
@@ -449,7 +450,7 @@ def extract_links(line, pageLinks, ignoreLinks = False):
     lineLinks = re.findall(r'!?\[[^\]]*\]\([^\)]*\)|<[^<]+[@:][^<]+>',line)
     for link in lineLinks:
         if link[0] == '<' and link[-1] == '>':
-            link = '[' + link[1:-1] + '](' + link[1:-1] + ')'
+            link = '[' + mapLinkLabels.get(link[1:-1],link[1:-1]) + '](' + link[1:-1] + ')'
         link = re.sub(r'\s+"[^"]+"\s*\)',')',link)
         if not (link in pageLinks):
             pageLinks[link] = len(pageLinks) + 1
@@ -639,7 +640,7 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
         text += words[-1]
         return text
 
-    def gopher_text(txt, prefix):
+    def gopher_text(txt, prefix = ''):
         lines = []
 
         # Process headings
@@ -728,6 +729,7 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
     # 2- lines must end with <CR><LF> (meaning '\r\n')
     vbprint("CONVERT Gophermap:",src,"->",dst)
     replacePage = False
+    addItemForText = False
     try:
         count = 0
         countOtherLinks = 0
@@ -742,10 +744,9 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
 
         def print_references(prefix):
             if len(pageLinks) == 0:
-                if countOtherLinks  == 0:
-                    warn("No links in '",src,"' convert to '",dst,
-                            "', it should be a txt file (instead of a gophermap)")
                 return
+            nonlocal countOtherLinks
+            countOtherLinks  += 1
             if prefix == 'i':
                 flDst.write(prefix + '\t' + filler + lineEnd + prefix + 
                         'References:\t' + filler + lineEnd)
@@ -762,18 +763,45 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
                 flDst.write(lineItem + '  [' + str(value) + '] ' + label + '\t'
                         + (arBase if uri[0] == '/' else '') + uri + filler + lineEnd)
 
+
+        def break_gopher_line(line):
+            #line is: <item><text>[<TAB><selector>[<TAB><host>[<TAB><port>]]]<CR><LF>
+            parts = line.split('\t')
+            n = len(parts)
+            port = '' if n < 4 else parts[3]
+            host = '' if n < 3 else parts[2]
+            sele = '' if n < 2 else parts[1]
+            text = '' if n == 0 else parts[0]
+            item = ''
+            if len(text) > 0:
+                item = text[0]
+                text = text[1:]
+            return item, text, sele, host, port
+
+        def g_line(item, text, sele, host, port):
+            if not addItemForText and item == 'i':
+                line =  text
+            else:
+                line = item + text
+            line += '' if not sele and not host and not port else '\t' + sele
+            line += '' if              not host and not port else '\t' + host
+            line += '' if                           not port else '\t' + port
+            return line + lineEnd
+
         while True:
             line = flSrc.get_line(isFenced)
             if not line:
                 break
             if (count == 0) and not arg:
                 arg = extract_arg(line) # Extract the arguments from the first line of the file.
+                if (fullGopherLine  or (arg and (arg['textChar'] or arg['fullLine']))):
+                    addItemForText = True
+                if arg and arg['copyPage']:
+                    replacePage = True
+                    break
                 if arg or (len(line.strip('\r\n\t ')) == 0):
                     continue
             count += 1
-            if arg and arg['copyPage']:
-                replacePage = True
-                break
             if arg and arg['keepRaw']:
                 flDst.write(line)
                 continue
@@ -832,71 +860,69 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
             #
             #line is: <item><text>[<TAB><selector>[<TAB><host>[<TAB><port>]]]<CR><LF>
             #
-            line = line.replace('gophermap.txt','gophermap')
-            linePart = line.split('\t')
-            if (len(linePart) == 2) and (linePart[1] == '') and (linePart[0][0] == '1'): ## We have something wrong in here
-                linePart[1] = '/'  ## Force it to the begining the alternative is to ignore the line
-            nLineParts = len(linePart)
-            if nLineParts == 4:
-                filler = ""
-            elif (nLineParts <= 2) and (fullGopherLine  or (arg and arg['fullLine'])):
-                filler = '\t' + arg['host'] + '\t' + arg['port']
-            elif nLineParts >= 3:
-                error(" Extra tabs in '",src,"', line ",flSrc.get_count(),":",linePart);
+            item, text, selector, host, port = break_gopher_line(line.replace('gophermap.txt','gophermap'))
+
+            if item == '1' and not selector:
+                selector = '/'  ## Force it to the begining the alternative is to ignore the line
+
+            if item in ['0','1','4','5','6','9','g','I','h','s']:
+                countOtherLinks += 1
+
+            if fullGopherLine or (arg and arg['fullLine']):
+                if not host:
+                    host = arg['host']
+                if not port:
+                    port = arg['port']
+                if item == 'i':
+                    selector = '/'
+                    host = ''
+                    port = ''
 
             if line.strip() == '[[[=> references <=]]]':
-                print_references('i' if (fullGopherLine  or (arg and (arg['textChar'] or arg['fullLine']))) else '')
+                print_references('i' if addItemForText else '')
                 continue
 
             # need to  clean up stuff
-            linePart[0] = clean_html_tags(linePart[0])
-            linePart[0] = clean_hugo_shortcuts(linePart[0])
+            if item == '1' and re.search(r'^\s*\/gopher\/',selector):
+                selector = selector.replace("/gopher/","/")
+            text = clean_html_tags(text)
+            text = clean_hugo_shortcuts(text)
             # need to extract and replace links [text](link)
             # Links alone in a single line shoul be placed in the same line
-            if linePart[0][0] == 'i':
-                single = one_line_link(linePart[0])
+            if item == 'i':
+                single = one_line_link(text)
                 if single:
                     if arg and arg['ignoreLinks']:
-                        flDst.write(single['label'] + lineEnd)
+                        flDst.write(g_line(item, single['label'], '', host, port))
+                        #flDst.write(single['label'] + lineEnd)
                     else:
-                        flDst.write(item_type(single['uri'], single['hint']) + '  ' + 
-                                single['label'] + '\t' + single['uri'] + filler + lineEnd)
+                        flDst.write(g_line(item_type(single['uri'], single['hint']), single['label'], single['uri'], host, port))
+                        #flDst.write(item_type(single['uri'], single['hint']) + '  ' + single['label'] + '\t' + single['uri'] + filler + lineEnd)
                     continue
 
                 # Links embeded in the text of the line must be collected for late placement
-                linePart[0], pageLinks = extract_links(linePart[0], pageLinks, arg and arg['ignoreLinks'])
+                text, pageLinks = extract_links(text, pageLinks, arg and arg['ignoreLinks'])
 
-            linePart[0] = clean_markdown(linePart[0])
-            if linePart[0][0] in ['0','1','4','5','6','9','g','I','h','s']:
-                countOtherLinks += 1
-            if linePart[0][0] == 'i': ### Text line
-                lines = gopher_text(linePart[0][1:], 
-                        'i' if fullGopherLine or (arg and (arg['textChar'] or arg['fullLine'])) else '')
+            text = clean_markdown(text)
+            if item == 'i': ### Text line
+                lines = gopher_text(text) 
                 for l in lines:
-                    if nLineParts > 3:
-                        lne = l + '\t' + linePart[1] + '\t' + linePart[2] + '\t' + linePart[3]
-                    elif nLineParts > 2:
-                        lne = l + '\t' + linePart[1] + '\t' + linePart[2]
-                    elif nLineParts > 1:
-                        lne = l + '\t' + linePart[1]
-                    else:
-                        lne = l
-                    flDst.write(lne + filler + lineEnd)
+                    flDst.write(g_line(item, l, selector, host, port))
+                    #flDst.write(lne + filler + lineEnd)
                 continue
-            elif (nLineParts > 1) and linePart[0][0] == '1': ### Directory line
-                if linePart[1].rstrip().endswith('gophermap'):
-                    linePart[1] = linePart[1].strip()[:-9].rstrip(os.sep)
-                    if nLineParts > 3:
-                        lne = linePart[0] + '\t' + linePart[1] + '\t' + linePart[2] + '\t' + linePart[3]
-                    elif nLineParts > 2:
-                        lne = linePart[0] + '\t' + linePart[1] + '\t' + linePart[2]
-                    else:
-                        lne = linePart[0]+ '\t' + linePart[1]
-                    flDst.write(lne + filler + lineEnd)
+            elif item == '1': ### Directory line
+                if selector.rstrip().endswith('gophermap'):
+                    selector = selector.strip()[:-9].rstrip(os.sep)
+                    flDst.write(g_line(item, text, selector, host, port))
+                    #flDst.write(lne + filler + lineEnd)
                     continue
 
-            flDst.write(line + filler + lineEnd)
+            flDst.write(g_line(item, text, selector, host, port))
+            #flDst.write(line + filler + lineEnd)
 
+        if countOtherLinks  == 0:
+            warn("No links in '",src,"' convert to '",dst,
+                        "', it should be a txt file (instead of a gophermap)")
         flSrc.destroy()
         flDst.close()
         delete_file(src)
@@ -914,6 +940,7 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
     replacePage = False
     try:
         count = 0
+        emptyLines = 0
         isFenced = False
         pageLinks = {}
         arg = {}
@@ -933,7 +960,7 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
                     flDst.write('=> ' + (arBase if ref[1][0] == '/' else '')
                             + urllib.parse.quote(ref[1][:-1],':/?=+&')
                             + '  [' + str(value) + '] ' + label + '\n')
-            flDst.write('\n')
+            #flDst.write('\n')
 
         flSrc = Markdown_reader(src, False)
         flDst = open(dst, 'wt')
@@ -944,15 +971,15 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
                 break
             if (count == 0) and not arg:
                 arg = extract_arg(line)
+                if arg and arg['copyPage']:
+                    replacePage = True
+                    break
                 if arg or (len(line.strip('\r\n\t ')) == 0):
                     continue
             count += 1
 
             ## Note that gemini lines can end on <CR><LF> or just in <LF>
             ## so, we don't need to worry as much as with gopher
-            if arg and arg['copyPage']:
-                replacePage = True
-                break
             if arg and arg['keepRaw']:
                 flDst.write(line)
                 continue
@@ -965,9 +992,15 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
                 continue
 
             # need to  clean up stuff
-            #print(":LINE:[",line,"]",sep='')
+            #print(":LINE:[",line.rstrip('\r\n'),"]",sep='')
+            if line.rstrip('\r\n') == '':
+                emptyLines += 1
+                if emptyLines > maxEmptyLines:
+                    continue
+            else:
+                emptyLines = 0
+
             if line[0:2] == '=>':
-                #print("## 1 ##:",line)
                 if re.search(r'=>\s*\/gemini\/',line):
                     line = line.replace("/gemini/","/")
                 if re.search(r'\/gemini-page\.gmi\s+',line):
@@ -975,10 +1008,9 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
                 line = line.replace("/.gmi",".gmi")
                 if line.find("=> .gmi") == 0:
                     line = "BAD LINE[" + line + "]"
-                #print("## 2:",line)
+
             line = clean_html_tags(line)
             line = clean_hugo_shortcuts(line)
-            #print("## 3:",line)
             # need to extract and replace links [text]()
             # Links alone in a single line shoul be placed in the same line
             single = one_line_link(line.strip('\r\n'))
@@ -1212,6 +1244,7 @@ def arguments() :
     print("   -b, --base    <path>    Rebase all Gopher absolute links to <path>")
     print("   -B, --Base    <path>    Rebase all Gemini absolute links to <path>")
     print("   -c, --config  <file>    Name of the hugo config file (default to config-gg.toml)")
+    print("   -M, --map     <file>    File with mapping of labels to links (default to hugo2gg.map)")
     print("   -t, --type    <type>    type of output to be generated (default to none)")
     print("                           <type> can be:")
     print("                                  all      Generate both gopher and gemini sites")
@@ -1238,6 +1271,7 @@ def main(argv):
    arGemini   = "public-gg" + os.sep + "gemini"
    arLast     = "public-gg-sav"
    arEmpty    = "layouts-gg"
+   arMapFile  = "hugo2gg.map"
    arBaseGopher = arBaseGemini = ""
    typeGopher = False
    typeGemini = False
@@ -1245,9 +1279,9 @@ def main(argv):
    arType     = "none"
 
    try:
-       opts, args = getopt.getopt(argv,"hfe:p:l:c:g:G:vt:knb:w:",
+       opts, args = getopt.getopt(argv,"hfe:p:l:c:g:G:vt:knb:w:M:",
                ["help","empty=","path=","last=","config=","gopher=",
-                   "full-line","white-lines=",
+                   "full-line","white-lines=","map=",
                    "gemini=","verbose","type=","keep","no-hugo","base="])
    except getopt.GetoptError as e:
       error(e)
@@ -1269,6 +1303,8 @@ def main(argv):
          arEmpty = arg
       elif opt in ("-c", "--config"):
          arConfig = arg
+      elif opt in ("-M", "--map"):
+         arMapFile = arg
       elif opt in ("-g", "--gopher"):
          arGopher = clean_dir(arg)
       elif opt in ("-G", "--gemini"):
@@ -1313,6 +1349,17 @@ def main(argv):
        typeGemini = True
    print("    Config file:  ", arConfig, "\n    Last output:  ", arLast,"\n")
 
+   if os.path.isfile(arMapFile):
+       print("    Map file:     ", arMapFile )
+       global mapLinkLabels
+       with open(arMapFile) as map:
+           for line in map:
+               line = line.strip(' \t\n\r')
+               if not line or line[0] == '#':
+                   continue
+               key,label = line.partition("=")[::2]
+               mapLinkLabels[key.strip()] = label.strip()
+            
    execHugo(arNoHugo, arPath, arConfig, arEmpty)
    traverse_site(arPath, arGopher, typeGopher, arGemini, typeGemini)
    if typeGopher:
