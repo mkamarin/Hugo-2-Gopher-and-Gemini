@@ -84,26 +84,28 @@ Usage:
   hugo2gg.py  [flags]
 
 Flags:
-   -p, --path    <path>  Path of the site to be converted (default to public-gg)
-   -g, --gopher  <path>  Gopher output folder (default to public-gg/gopher)
-   -G, --gemini  <path>  Gemini output folder (default to public-gg/gemini)
-   -e, --empty   <path>  Path of empty folder (default to layouts-gg)
-   -l, --last    <path>  Path for last build folder (default to public-gg-sav)
-   -b, --base    <path>  Rebase all Gopher absolute links to <path>
-   -B, --Base    <path>  Rebase all Gemini absolute links to <path>
-   -c, --config  <file>  Name of the hugo config file (default to config-gg.toml)
-   -t, --type    <type>  type of output to be generated (default to all)
-                         <type> can be:
-                                all      Generate both gopher and gemini sites
-                                gopher   Generate only the gopher hole
-                                gemini   Generate only the gemini capsule
-   -k, --keep            Keep processed temporary files for debugging purposes
-   -m, --max-line <num>  Max lenght of gophermap lines (default 70 but some prefer 67)
-   -f, --full-line       Forces each line in the gophermap to be fully compliant
-                         (overrides fullLine and textChar in config-gg.toml)
-   -n, --no-hugo         Do not run  hugo. Remember to run hugo before
-   -h, --help            Prints this help
-   -v, --verbose         Produces verbose stdout output
+   -p, --path    <path>    Path of the site to be converted (default to public-gg)
+   -g, --gopher  <path>    Gopher output folder (default to public-gg/gopher)
+   -G, --gemini  <path>    Gemini output folder (default to public-gg/gemini)
+   -e, --empty   <path>    Path of empty folder (default to layouts-gg)
+   -l, --last    <path>    Path for last build folder (default to public-gg-sav)
+   -b, --base    <path>    Rebase all Gopher absolute links to <path>
+   -B, --Base    <path>    Rebase all Gemini absolute links to <path>
+   -c, --config  <file>    Name of the hugo config file (default to config-gg.toml)
+   -M, --map     <file>    File with mapping of labels to links (default to hugo2gg.map)
+   -t, --type    <type>    type of output to be generated (default to none)
+                           <type> can be:
+                                  all      Generate both gopher and gemini sites
+                                  gopher   Generate only the gopher hole
+                                  gemini   Generate only the gemini capsule
+   -k, --keep              Keep processed temporary files for debugging purposes
+   -m, --max-line <num>    Max lenght of gophermap lines (default 70 but some prefer 67)
+   -f, --full-line         Forces each line in the gophermap to be fully compliant
+                           (overrides fullLine and textChar in config-gg.toml)
+   -n, --no-hugo           Do not run  hugo. Remember to run hugo before
+   -w, --white-lines <num> Indicate the max number of empty lines (default 1)
+   -h, --help              Prints this help
+   -v, --verbose           Produces verbose stdout output
 
 ```
 

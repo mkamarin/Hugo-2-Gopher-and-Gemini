@@ -1,0 +1,65 @@
+
+# This file is read by hugo2gg.py with the purpose of defining (key, value) pairs for two purposess:
+# 1) Adding lables to hugo shortcuts or to other links
+# 2) Doing text replacement in the generated output
+#
+# The sintax of this file is as follows:
+# Comments or ignored lines:
+#     Lines that are empty are ignored
+#     Lines that start with a #, =, or := are ignored
+# Mapping of links to lables (for hugo shortcuts of other links) use an equal sign as separator. as follows:
+#     key = value
+# Text replacement directives use colon plus equal sign as separator, as follows:
+#     key := value
+#
+# note that spaces aound the keys and around the value are strip out, 
+# however you can enclose the value in quotes if you need spaces at the begin or at the end of the value
+# so you can use:
+#    key = "   value   "
+#    key := "   value   "
+#
+# Some examples:
+#
+# 1- You can define labels for links or hugo shortcuts. using the equal sign (=) as separator
+#    For example:
+#
+#        {{< youtube keOpdbcbRrk >}}
+#
+#    In this case, the youtube id is the key, and so,
+#    you can use the following line to define the (key, value) pair (just remove the # character):
+#
+# keOpdbcbRrk  = Learning letters is fun with the Alphablocks LIVE  Learn To Spell
+#
+# Or you can use quotes as follows:
+#
+# keOpdbcbRrk  = " Learning letters is fun with the Alphablocks LIVE  Learn To Spell "
+#
+# 2- An email address may appear as
+#
+#        <mail@example.com>
+#
+#    in this case the whole email is the key, so the correct map is something like this:
+#
+# mail@example.com = My email address
+#
+# 3- You can replace text text in the generated output, using colon equal signs (:=) as separator. 
+#    For example:
+#
+#        A line with EOF. or \<EOF\>
+#
+#    You can replace the EOF as follow:
+#
+# EOF := End of File
+#
+#    Which will result in a line with "A line with End of File, or \<End of File\>"
+#
+#    or you can use:
+#
+# \<EOF\> := End of File
+#
+#    Which will result in a line with "A line with EOF, or End of File"
+#
+
+
+LQucESRF3Sg = The Minds of Men - Official Documentary by Aaron and Melissa Dykes
+

@@ -26,6 +26,7 @@ import os
 import re
 import io
 import sys
+import html
 import getopt
 import random
 import urllib
@@ -42,6 +43,7 @@ fullGopherLine = False
 gopherLineLength = 70
 maxEmptyLines = 1
 mapLinkLabels = {}
+mapReplace = {}
 
 def vbprint(*args, **kwargs):
     if verbose:
@@ -194,7 +196,10 @@ class Markdown_reader:
                     break
             if (not isFenced) and this.re_break2.search(this.line):  ## Line break
                 this.line = this.line.replace('<br>','')
-            return this.line + this.rest
+            if isFenced:
+                return this.line + this.rest
+            else:
+                return html.unescape(this.line + this.rest)
         except OSError as e:
             error(e, " while reading file", src)
 
@@ -328,6 +333,14 @@ def extract_arg(line):
     return arg
 
 
+def replace_mapped_text(line):
+    # will try to replace all text specified in the mapping file
+    if not mapReplace:
+        return line
+    for key, label in mapReplace.items():
+        line = line.replace(key,label)
+    return line
+
 def clean_html_tags(line):
     # Process html tags and either remove them or convert them to links
     def process_html_tags(line,tags):
@@ -449,9 +462,14 @@ def clean_markdown(line, add_LF = False):
 def extract_links(line, pageLinks, ignoreLinks = False):
     lineLinks = re.findall(r'!?\[[^\]]*\]\([^\)]*\)|<[^<]+[@:][^<]+>',line)
     for link in lineLinks:
+        original_link = link
         if link[0] == '<' and link[-1] == '>':
-            link = '[' + mapLinkLabels.get(link[1:-1],link[1:-1]) + '](' + link[1:-1] + ')'
+            lk = link[1:-1]
+            if re.search(r'^[a-zA-Z][.\w-]*@[.\w-]+$',lk):
+                lk = 'mailto:' + lk
+            link = '[' + mapLinkLabels.get(link[1:-1],link[1:-1]) + '](' + lk + ')'
         link = re.sub(r'\s+"[^"]+"\s*\)',')',link)
+        #link = re.sub(r'%25','%',link)
         if not (link in pageLinks):
             pageLinks[link] = len(pageLinks) + 1
         ref = link.split('](')
@@ -462,7 +480,7 @@ def extract_links(line, pageLinks, ignoreLinks = False):
             cite = ref[0][2:] + (citeId if not ignoreLinks else "")
         else:
             cite = ref[0][1:] + (citeId if not ignoreLinks else "")
-        line = line.replace(link,cite)
+        line = line.replace(original_link,cite)
     return line, (pageLinks if not ignoreLinks else {})
 
 
@@ -473,6 +491,7 @@ def one_line_link(line):
         single['hint'] = 'I' if re.search(r'^i?\s*!\[',line) else 'h'
         link = line[1:].strip(' <![)>\t') if line[0] == 'i' else line.strip(' <![)>\t')
         link = re.sub(r'\s+"[^"]+"\s*\)',')',link)
+        #link = re.sub(r'%25','%',link)
         ref = link.split('](')
         single['uri'] = ref[0]
         single['label'] = ref[0]
@@ -484,121 +503,6 @@ def one_line_link(line):
 
 
 def convert_gopher(src, dst, arPath, arLast, arBase):
-
-    ###############################################################################
-    #### I don’t know the origin of this document (but I did not created)      ####
-    #### I  changed two things:                                                ####
-    ####    1-  all tabs to <T> (so they will be visible)                      ####
-    ####    2- added 4 blanks and #### at the beginning of each line           ####
-    ###############################################################################
-    #### i                                                             	<T>/
-    #### i      _____             _                 __  __             	<T>/
-    #### i     / ____|           | |               |  \/  |            	<T>/
-    #### i    | |  __  ___  _ __ | |__   ___ _ __  | \  / | __ _ _ __  	<T>/
-    #### i    | | |_ |/ _ \| '_ \| '_ \ / _ \ '__| | |\/| |/ _` | '_ \ 	<T>/
-    #### i    | |__| | (_) | |_) | | | |  __/ |    | |  | | (_| | |_) |	<T>/
-    #### i     \_____|\___/| .__/|_| |_|\___|_|    |_|  |_|\__,_| .__/ 	<T>/
-    #### i                 | |                                  | |    	<T>/
-    #### i                 |_|                                  |_|    	<T>/
-    #### i                                                             	<T>/
-    #### 
-    #### A Gopher server exposes a directory structure to the network using
-    #### the gopher protocol (RFC 1436).  In that respect, it is similar to
-    #### FTP  (RFC 959).  The main  difference is that  Gopher  looks for a
-    #### ‘gophermap’  file in a  directory.  If that file is present,  then
-    #### Gopher will use that  file as a menu for  the directory, otherwise
-    #### it will  just list the files  and  directories in  that directory.
-    #### Therefore a ‘gophermap’  is just a text file that serves as a menu
-    #### for a directory, but can also provide links to other resources.
-    #### 
-    #### A Gopher map has a very simple structure. Each line can have up to
-    #### four fields separated by horizontal tabs  (ASCII decimal 09 or hex
-    #### x09 or ‘\t’). With one exception, the first character of the first
-    #### field indicates the type of line. Therefore, a line looks like:
-    #### i	<T>/
-    #### i    Label <TAB> selector <TAB> host <TAB> port	<T>/
-    #### 
-    #### Where,
-    #### 
-    #### i    - Label should be human readable text.	<T>/
-    #### i      The first character of the label is the line item type.	<T>/
-    #### i    - selector is what the line is pointing to. 	<T>/
-    #### i      The selector can be a file, a directory, etc.	<T>/
-    #### i    - host refers to the host were the selector resides	<T>/
-    #### i    - port is the port used Gopher in that host	<T>/
-    #### 
-    #### The most common item types are:
-    #### 
-    #### i    '0’ for a file (normally text files)	<T>/
-    #### i    '1’ for a directory	<T>/
-    #### i    '9’ for binary files (for example, pdf, zip, etc.)	<T>/
-    #### i    'g’ for GIF graphic files	<T>/
-    #### i    'I’ for other image files (like jpg, png, etc.)	<T>/
-    #### i    'h’ for HTML files. 	<T>/
-    #### i    'i’ for informational messages.	<T>/
-    #### i    's’ for sound files (like wav, etc.)	<T>/
-    #### 
-    ####   If the selector is located in the host containing the gophermap,
-    #### then the host and port can be omitted.  Which is a  good practice,
-    #### because  then you can move the directory  structure to a different
-    #### host without changing any gophermaps.
-    #### 
-    #### A file or directory  selector that starts with ‘/’ is  relative to
-    #### the main directory  in  the  gopher site.  Otherwise,  the file or
-    #### directory is located in the same directory than the gophermap.
-    #### 
-    #### Lines with no tab:
-    #### 1) Lines without any horizontal tabs are considered text and should
-    ####    be displayed as such by Gopher clients.
-    #### 
-    #### Lines with a single tab:
-    #### 1) Lines staring with item type  ‘i’  should have a selector (so it
-    ####    will have one  <TAB>).  It  is  common  to  use  ‘/’  for such a
-    ####    selector.  It is  also common to omit  the host and port fields.
-    ####    Therefore only one tab is present on these lines.
-    #### 
-    #### An example of these type of lines is  the banner at the top of this
-    #### document, that uses the ‘i’ item type and ‘/’ as the selector. That
-    #### forces the gopher client to show the line exactly as it was created.
-    #### 
-    #### 2) All other item types  can have the label and the selector fields
-    ####    only if they reside in the same  host as the gophermap.  In this
-    ####    case the host and port fields are optional.
-    #### 
-    #### Few examples are:
-    #### 0A text file (relative to this gopgermap)	<T>stuff/text.txt
-    #### 9A pdf file (relative to the gopher site)	<T>/stuff/a-file.pdf
-    #### Ian image file	<T>stuff/image.jpg
-    #### 1The stuff directory (relative to this gopgermap)	<T>stuff
-    #### 1The stuff directory (relative to the gopher site)	<T>/stuff
-    #### 
-    #### Lines with three tabs:
-    #### 1) Lines with a  selector that  resides in a  different host.  Must
-    ####    have the host and port fields. Therefore the URL for those lines
-    ####    becomes:  “gopher://<host>:<port><selector>”.  Note that in this
-    ####    case, the selector must start with a  ‘/’ and be relative to the
-    ####    hosting gopher site.
-    #### 
-    #### Few examples:
-    #### 1The base directory of the SDF gopher site	<T>/	<T>sdf.org	<T>70
-    #### 1The Floodgap gopher site	<T>/	<T>gopher.floodgap.com	<T>70
-    #### 
-    #### The exception are lines with item type of ‘h’. The selector in those
-    #### lines can start with “URL:” followed by a scheme (e.g. “URL:http://”,
-    #### or “URL:ftp://”, “URL:gopher://”, “URL:gemini//”, etc.). Note that in
-    #### this case the host and port fields are optional.
-    #### 
-    #### Few example:
-    #### hThe SDF web site	<T>URL:http://sdf.org/
-    #### hThe Floodgap web site	<T>URL:https://www.floodgap.com/
-    #### hOur sister toycapsule	<T>URL:gemini://myserver/
-    #### 
-    #### This is basically all what you need to know to create gophermaps. It is
-    #### in good manners to keep most posts in a phlog as text files  (with .txt
-    #### extension), and use gophermaps to point to the posts. Or in some cases,
-    #### just write text  files in a suitable  directory structure and leave the
-    #### gopher server navigate the directory structure. 
-    ###############################################################################
 
     def justify (txt, text_width):
         missing = text_width - len(txt)
@@ -734,6 +638,7 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
         count = 0
         countOtherLinks = 0
         isFenced = False # Fencing means that it inside a clode block that start with three back tildes (``` code ```)
+        skipLine =False
         pageLinks = {}
         lineEnd = '\r\n'
         arg = {}
@@ -783,6 +688,8 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
                 line =  text
             else:
                 line = item + text
+            if item == 'h' and not sele.startswith("URL:"):
+                sele = 'URL:' + sele
             line += '' if not sele and not host and not port else '\t' + sele
             line += '' if              not host and not port else '\t' + host
             line += '' if                           not port else '\t' + port
@@ -790,8 +697,10 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
 
         while True:
             line = flSrc.get_line(isFenced)
-            if not line:
+            if not line: ## Note that empty lines comming from the file have at least a '\n' on them
                 break
+            if len(line) > 6 and line.startswith("i+++") and line.strip('\r\n').endswith("+++"):
+                continue #### This is a kludge to avoid debugging get_line()
             if (count == 0) and not arg:
                 arg = extract_arg(line) # Extract the arguments from the first line of the file.
                 if (fullGopherLine  or (arg and (arg['textChar'] or arg['fullLine']))):
@@ -806,6 +715,11 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
                 flDst.write(line)
                 continue
             line = line.rstrip('\r\n') # remove trailing <CR> and/or <LF>
+            if line == 'i---' or line == 'i+++':
+                skipLine = not skipLine 
+                continue
+            if skipLine:
+                continue
             if re.search(r"^i?\s*```",line): #toggle fenced code
                 isFenced  = not isFenced
                 continue
@@ -822,6 +736,10 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
                 continue
             if not line:
                 continue
+            if line.strip() == '[[[=> references <=]]]':
+                print_references('i' if addItemForText else '')
+                continue
+
             # Strict gopher: lines are composed of five parts:
             # item: one character describing the item type
             #    it is one of the following: (see 'https://en.wikipedia.org/wiki/Gopher_(protocol)')
@@ -878,15 +796,14 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
                     host = ''
                     port = ''
 
-            if line.strip() == '[[[=> references <=]]]':
-                print_references('i' if addItemForText else '')
-                continue
-
             # need to  clean up stuff
             if item == '1' and re.search(r'^\s*\/gopher\/',selector):
                 selector = selector.replace("/gopher/","/")
+
+            text = replace_mapped_text(text)
             text = clean_html_tags(text)
             text = clean_hugo_shortcuts(text)
+
             # need to extract and replace links [text](link)
             # Links alone in a single line shoul be placed in the same line
             if item == 'i':
@@ -942,6 +859,7 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
         count = 0
         emptyLines = 0
         isFenced = False
+        skipLine =False
         pageLinks = {}
         arg = {}
 
@@ -967,8 +885,10 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
 
         while True:
             line = flSrc.get_line(isFenced)
-            if not line:
+            if not line: ## Note that empty lines comming from the file have at least a '\n' on them
                 break
+            if len(line) > 6 and line.startswith("+++") and line.strip('\r\n').endswith("+++"):
+                continue #### This is a kludge to avoid debugging get_line()
             if (count == 0) and not arg:
                 arg = extract_arg(line)
                 if arg and arg['copyPage']:
@@ -982,6 +902,11 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
             ## so, we don't need to worry as much as with gopher
             if arg and arg['keepRaw']:
                 flDst.write(line)
+                continue
+            if line.strip('\r\n') in ['---', '+++']:
+                skipLine = not skipLine 
+                continue
+            if skipLine:
                 continue
             if re.search(r"^\s*```",line): #toggle fenced code
                 flDst.write(line.strip('\t\r\n ') + '\n')
@@ -1009,8 +934,10 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
                 if line.find("=> .gmi") == 0:
                     line = "BAD LINE[" + line + "]"
 
+            line = replace_mapped_text(line)
             line = clean_html_tags(line)
             line = clean_hugo_shortcuts(line)
+
             # need to extract and replace links [text]()
             # Links alone in a single line shoul be placed in the same line
             single = one_line_link(line.strip('\r\n'))
@@ -1347,19 +1274,37 @@ def main(argv):
    if arType in ("all", "gemini"):
        print("    Gemini folder:",arGemini)
        typeGemini = True
-   print("    Config file:  ", arConfig, "\n    Last output:  ", arLast,"\n")
+   print("    Config file:  ", arConfig, "\n    Last output:  ", arLast)
 
    if os.path.isfile(arMapFile):
        print("    Map file:     ", arMapFile )
        global mapLinkLabels
+       global mapReplace
        with open(arMapFile) as map:
            for line in map:
                line = line.strip(' \t\n\r')
                if not line or line[0] == '#':
                    continue
-               key,label = line.partition("=")[::2]
-               mapLinkLabels[key.strip()] = label.strip()
-            
+               key, sep, label = line.partition(":=")
+               key = key.strip()
+               if sep == ":=" and key:
+                   label = label.strip()
+                   if label and label[0] == '"' and label[-1] == '"':
+                       label = label[1:-1]
+                   vbprint("Replace:",key,"with",label)
+                   mapReplace[key] = label
+               if not sep:
+                   key, sep, label = line.partition("=")
+                   key = key.strip()
+                   if sep == "=" and key:
+                       label = label.strip()
+                       if label and label[0] == '"' and label[-1] == '"':
+                           label = label[1:-1]
+                       vbprint("Map:",key,"to",label)
+                       mapLinkLabels[key] = label
+
+   print("\n")
+
    execHugo(arNoHugo, arPath, arConfig, arEmpty)
    traverse_site(arPath, arGopher, typeGopher, arGemini, typeGemini)
    if typeGopher:
