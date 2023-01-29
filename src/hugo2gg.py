@@ -152,7 +152,7 @@ class Markdown_reader:
         if this.isGopher and this.line and (this.line[0] == 'i') and (this.nextline[0] == 'i'):
             line1 = this.line[1:]
             line2 = this.nextline[1:]
-        elif this.isGopher:
+        elif this.isGopher: ## This is a non-text gopher line (meaning a link line) and shoul not be merged
             return False
         else:
             line1 = this.line
@@ -196,10 +196,21 @@ class Markdown_reader:
                     break
             if (not isFenced) and this.re_break2.search(this.line):  ## Line break
                 this.line = this.line.replace('<br>','')
+
+            # Ready to return a line, but need to clean it up first if it is not fenced
+            # Note that lines starting with four blanks or a tab are considered fenced
+            rLine = this.line + this.rest
+            if not isFenced:
+                if len(rLine) > 4:
+                    if (rLine[0:4] == '    ') or (rLine[0:1] == '\t'):
+                        isFenced = True
+                    elif this.isGopher and ((rLine[0:5] == 'i    ') or (rLine[0:2] == 'i\t')):
+                        isFenced = True
+
             if isFenced:
-                return this.line + this.rest
+                return rLine
             else:
-                return html.unescape(this.line + this.rest)
+                return html.unescape(rLine)
         except OSError as e:
             error(e, " while reading file", src)
 
@@ -1291,6 +1302,8 @@ def main(argv):
                    label = label.strip()
                    if label and label[0] == '"' and label[-1] == '"':
                        label = label[1:-1]
+                   if key and key[0] == '"' and key[-1] == '"':
+                       key = key[1:-1]
                    vbprint("Replace:",key,"with",label)
                    mapReplace[key] = label
                if not sep:

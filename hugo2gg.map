@@ -1,4 +1,7 @@
 
+# This file is part of the Hugo-2-Gopher-and-Gemini project
+# For details see: https://github.com/mkamarin/Hugo-2-Gopher-and-Gemini
+#
 # This file is read by hugo2gg.py with the purpose of defining (key, value) pairs for two purposess:
 # 1) Adding lables to hugo shortcuts or to other links
 # 2) Doing text replacement in the generated output
@@ -59,7 +62,4 @@
 #
 #    Which will result in a line with "A line with EOF, or End of File"
 #
-
-
-LQucESRF3Sg = The Minds of Men - Official Documentary by Aaron and Melissa Dykes
 

@@ -2,6 +2,7 @@
 # This file governs the generation of a Gopher hole and/or a Gemini capsule   #
 # from a Hugo site.  It should not be merged with your original Hugo’s        #
 # config.toml  -- that is the reason for a different name for this file.      #
+# For details see: https://github.com/mkamarin/Hugo-2-Gopher-and-Gemini       #
 ###############################################################################
 
 # Title of the main page of the Gopher hole and/or Gemini capsule
