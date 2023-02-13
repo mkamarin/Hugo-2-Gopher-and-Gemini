@@ -27,6 +27,7 @@ import re
 import io
 import sys
 import html
+import shutil
 import getopt
 import random
 import urllib
@@ -287,9 +288,7 @@ def clone_file(src, dst):
         if not os.path.exists(dstFolder):
             os.makedirs(dstFolder)
 
-        with open(src, 'rb') as flSrc:
-            with open(dst, 'wb') as flDst:
-                flDst.write(flSrc.read(4096))
+        shutil.copyfile(src, dst)
 
     except OSError as e:
         error(e, " while processing files", src,"=>",dst)
