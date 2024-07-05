@@ -26,7 +26,7 @@
 
 {{ .Site.Params.info }}
 
-{{ .RawContent }}
+{{ .RenderShortcodes }} 
 {{ if not (.Params.ggignorelinks) }}
 [[[=> references <=]]]
 {{- end -}}

@@ -21,7 +21,7 @@
 */}}
 [[[=> page:page,copyPage: {{- .Params.ggcopypage -}},keepRaw: {{- .Params.ggkeepraw -}},removeExtras: {{- .Params.ggremoveExtras -}},ignoreLinks: {{- .Params.ggignorelinks -}},fullLine: {{- .Site.Params.gopher.fullLine -}},textChar: {{- .Site.Params.gopher.textChar -}},host:{{- .Site.Params.gopher.host -}},port:{{- .Site.Params.gopher.port -}}  <=]]]
 {{ if .Params.ggkeepraw }}
-{{ .RawContent -}}
+{{ .RenderShortcodes -}}
 {{ else }}
 i{{ .Title }}
 i
@@ -30,7 +30,7 @@ i{{ .Date.Format (.Site.Params.dateform | default "January 2006") }} · {{ .Read
 iPosted in:  {{ range .Params.tags }}{{ . }}, {{ end }}
 {{ end }}
 i
-{{ $content := .RawContent -}}
+{{ $content := .RenderShortcodes -}}
 {{ $content := $content | replaceRE "\t" "    " -}}
 {{- range (split $content "\n") }}
 i{{- . }}

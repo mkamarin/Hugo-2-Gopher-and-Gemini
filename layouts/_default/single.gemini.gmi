@@ -21,10 +21,10 @@
 */}}
 [[[=> page:page,copyPage: {{- .Params.ggcopypage -}},keepRaw: {{- .Params.ggkeepraw -}},removeExtras: {{- .Params.ggremoveExtras -}},ignoreLinks: {{- .Params.ggignoreLinks -}} <=]]]
 {{ if .Params.ggkeepraw }}
-{{ .RawContent -}}
+{{ .RenderShortcodes -}}
 {{ else }}
 # {{ .Title }}
-{{ .RawContent -}}
+{{ .RenderShortcodes -}}
 {{- end }}
 {{ if not (.Params.ggignorelinks) }}
 [[[=> references <=]]]
