@@ -725,7 +725,7 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
                 flDst.write(line)
                 continue
             line = line.rstrip('\r\n') # remove trailing <CR> and/or <LF>
-            if line == 'i---' or line == 'i+++':
+            if not isFenced and (line == 'i---' or line == 'i+++'):
                 skipLine = not skipLine 
                 continue
             if skipLine:
@@ -743,8 +743,6 @@ def convert_gopher(src, dst, arPath, arLast, arBase):
                     error("Non 'i' Fenced line") 
 
                 flDst.write(line + ('\t/' if len(linePart) < 2 else '') + lineEnd)
-                continue
-            if not line:
                 continue
             if line.strip() == '[[[=> references <=]]]':
                 print_references('i' if addItemForText else '')
@@ -913,7 +911,7 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
             if arg and arg['keepRaw']:
                 flDst.write(line)
                 continue
-            if line.strip('\r\n') in ['---', '+++']:
+            if not isFenced and line.strip('\r\n') in ['---', '+++']:
                 skipLine = not skipLine 
                 continue
             if skipLine:
