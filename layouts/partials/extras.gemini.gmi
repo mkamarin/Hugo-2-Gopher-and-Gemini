@@ -48,7 +48,9 @@
 {{- if .OutputFormats.Get "gemini" }}
 {{- $postLink := replace .RelPermalink "/gemini" "" 1 -}}
 => {{ replace $postLink "/gemini-page" "" 1}}  {{.Date.Format "January 2, 2006"}} {{ .Title }}
+{{ if .Params.summary }}
 {{ .Params.summary }}
+{{ end }}
 {{ end }}
 {{- end }}
 {{ end }}
