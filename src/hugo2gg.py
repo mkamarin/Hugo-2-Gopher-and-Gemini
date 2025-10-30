@@ -919,6 +919,7 @@ def convert_gemini(src, dst, arPath, arLast, arBase):
             if re.search(r"^\s*```",line): #toggle fenced code
                 flDst.write(line.strip('\t\r\n ') + '\n')
                 isFenced  = not isFenced
+                emptyLines = 0
                 continue
             if isFenced or ((len(line) > 3) and ((line[0:4] == '    ') or (line[0:1] == '\t'))):
                 flDst.write(line.rstrip('\r\n ') + '\n')
