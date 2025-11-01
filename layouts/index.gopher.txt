@@ -31,7 +31,7 @@ i
 i{{- . }}
 {{- end }}
 i
-{{ $content := .RawContent -}}
+{{ $content := .RenderShortcodes -}}
 {{ $content := $content | replaceRE "\t" "    " -}}
 {{- range (split $content "\n") }}
 i{{- . }}
