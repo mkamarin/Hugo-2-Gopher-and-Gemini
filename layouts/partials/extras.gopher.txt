@@ -43,7 +43,9 @@ i{{ $.Site.Params.gopher.postText }}
 {{- range where .Site.RegularPages "Type" "posts" -}}
 {{- if .OutputFormats.Get "gopher" }}
 1{{ .Title }}	{{ replace .RelPermalink "/gopher" "" 1 }}
+{{- if .Params.summary }}
 i{{ .Params.summary }}
+{{ end }}
 i
 {{ end }}
 {{ end }}
