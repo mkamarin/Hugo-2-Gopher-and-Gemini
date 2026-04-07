@@ -31,6 +31,7 @@ import shutil
 import getopt
 import random
 import urllib
+import urllib.parse
 import inspect
 import textwrap
 import datetime
